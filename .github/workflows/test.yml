@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade uv
-          uv pip install --system -e ".[dev]"
+          python -m uv pip install -e ".[dev]"
 
       - name: Check platform capabilities
         run: python -m remind.platform_capabilities
