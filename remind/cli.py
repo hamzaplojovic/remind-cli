@@ -368,38 +368,54 @@ def upgrade() -> None:
     import os
     import subprocess
 
-    repo_dir = os.path.expanduser("~/remind-cli")
-
-    if not os.path.exists(repo_dir):
-        typer.echo("✗ Remind CLI not found at ~/remind-cli", err=True)
-        raise typer.Exit(1)
-
     typer.echo("Upgrading Remind CLI...")
 
-    try:
-        # Pull latest changes
-        subprocess.run(
-            ["git", "-C", repo_dir, "pull"],
-            check=True,
-            capture_output=True,
-        )
-        typer.echo("✓ Downloaded latest version")
+    repo_dir = os.path.expanduser("~/remind-cli")
+    binary_path = os.path.expanduser("~/.local/bin/remind")
 
-        # Sync dependencies
-        subprocess.run(
-            ["uv", "sync"],
-            cwd=repo_dir,
-            check=True,
-            capture_output=True,
-        )
-        typer.echo("✓ Updated dependencies")
-        typer.echo("✓ Remind CLI upgraded successfully!")
+    # Check which installation method is being used
+    if os.path.exists(repo_dir):
+        # Git-based installation
+        try:
+            subprocess.run(
+                ["git", "-C", repo_dir, "pull"],
+                check=True,
+                capture_output=True,
+            )
+            typer.echo("✓ Downloaded latest version")
 
-    except subprocess.CalledProcessError as e:
-        typer.echo(f"✗ Upgrade failed: {e.stderr.decode() if e.stderr else str(e)}", err=True)
-        raise typer.Exit(1)
-    except Exception as e:
-        typer.echo(f"✗ Error during upgrade: {e}", err=True)
+            subprocess.run(
+                ["uv", "sync"],
+                cwd=repo_dir,
+                check=True,
+                capture_output=True,
+            )
+            typer.echo("✓ Updated dependencies")
+            typer.echo("✓ Remind CLI upgraded successfully!")
+
+        except subprocess.CalledProcessError as e:
+            typer.echo(f"✗ Upgrade failed: {e.stderr.decode() if e.stderr else str(e)}", err=True)
+            raise typer.Exit(1)
+
+    elif os.path.exists(binary_path):
+        # Curl-based installation - re-run the installer
+        try:
+            installer_url = "https://raw.githubusercontent.com/hamzaplojovic/remind-cli/master/build_tools/install.sh"
+            subprocess.run(
+                f'curl -fsSL "{installer_url}?t=$(date +%s)" | bash',
+                shell=True,
+                check=True,
+                cwd=os.path.expanduser("~"),
+            )
+            typer.echo("✓ Remind CLI upgraded successfully!")
+
+        except subprocess.CalledProcessError as e:
+            typer.echo(f"✗ Upgrade failed: {e}", err=True)
+            raise typer.Exit(1)
+
+    else:
+        typer.echo("✗ Could not find Remind CLI installation", err=True)
+        typer.echo("  Try: curl -fsSL https://raw.githubusercontent.com/hamzaplojovic/remind-cli/master/build_tools/install.sh | bash", err=True)
         raise typer.Exit(1)
 
 
