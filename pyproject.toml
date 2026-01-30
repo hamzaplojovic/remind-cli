@@ -54,10 +54,10 @@ backend = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/remind"
-Repository = "https://github.com/yourusername/remind.git"
-Documentation = "https://github.com/yourusername/remind/blob/main/README.md"
-"Bug Tracker" = "https://github.com/yourusername/remind/issues"
+Homepage = "https://github.com/hamzaplojovic/remember"
+Repository = "https://github.com/hamzaplojovic/remember.git"
+Documentation = "https://github.com/hamzaplojovic/remember/blob/main/README.md"
+"Bug Tracker" = "https://github.com/hamzaplojovic/remember/issues"
 
 [project.scripts]
 remind = "remind.cli:app"

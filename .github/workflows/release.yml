@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-13
+            arch: x86_64
+            artifact: remind-macos-x86_64
+          - os: macos-14
+            arch: arm64
+            artifact: remind-macos-arm64
+          - os: ubuntu-latest
+            arch: x86_64
+            artifact: remind-linux-x86_64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install uv
+        run: pip install --system uv
+
+      - name: Install dependencies
+        run: uv pip install --system -e ".[build]"
+
+      - name: Build binary
+        run: python build_tools/build.py
+
+      - name: Rename artifact
+        run: mv dist/remind dist/${{ matrix.artifact }}
+
+      - name: Calculate SHA256
+        id: sha256
+        run: |
+          SHA=$(shasum -a 256 dist/${{ matrix.artifact }} | awk '{print $1}')
+          echo "sha256=$SHA" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create release assets
+        run: |
+          mkdir -p release_assets
+          mv remind-macos-x86_64/remind-macos-x86_64 release_assets/
+          mv remind-macos-arm64/remind-macos-arm64 release_assets/
+          mv remind-linux-x86_64/remind-linux-x86_64 release_assets/
+
+      - name: Calculate checksums
+        id: checksums
+        run: |
+          cd release_assets
+          shasum -a 256 * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release_assets/remind-macos-x86_64
+            release_assets/remind-macos-arm64
+            release_assets/remind-linux-x86_64
+            release_assets/SHA256SUMS
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Homebrew formula
+        run: python build_tools/generate_homebrew_formula.py ${{ github.repository }} ${{ github.ref_name }}

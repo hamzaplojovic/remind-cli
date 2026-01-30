@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 
-def build_binary(output_dir: Path = None) -> None:
+def build_binary(output_dir: Path | None = None) -> None:
     """Build a standalone binary using PyInstaller."""
     if output_dir is None:
         output_dir = Path("dist")
@@ -28,19 +28,17 @@ def build_binary(output_dir: Path = None) -> None:
         "--console",
         "--name",
         "remind",
-        "--dist",
+        "--distpath",
         str(output_dir),
-        "--build-temp",
+        "--workpath",
         "build",
-        "--spec-dir",
+        "--specpath",
         "build",
-        "--add-data",
-        "remind:remind",
         "remind/__main__.py",
     ]
 
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, cwd=Path(__file__).parent.parent)
         binary_name = "remind.exe" if system == "Windows" else "remind"
         binary_path = output_dir / binary_name
         print(f"✓ Binary built: {binary_path}")

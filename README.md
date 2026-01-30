@@ -62,8 +62,8 @@ curl -fsSL https://install.remind.dev | bash
 
 ### From Source
 ```bash
-git clone https://github.com/yourusername/remind.git
-cd remind
+git clone https://github.com/hamzaplojovic/remember.git
+cd remember
 python -m venv venv
 source venv/bin/activate
 pip install -e .
@@ -116,9 +116,9 @@ remind report
 
 ## License & Support
 
-- 📖 [Full Documentation](https://github.com/yourusername/remind/wiki)
-- 🐛 [Report Issues](https://github.com/yourusername/remind/issues)
-- 💬 [Discussions](https://github.com/yourusername/remind/discussions)
+- 📖 [Full Documentation](https://github.com/hamzaplojovic/remember/wiki)
+- 🐛 [Report Issues](https://github.com/hamzaplojovic/remember/issues)
+- 💬 [Discussions](https://github.com/hamzaplojovic/remember/discussions)
 - 💳 [Pricing & Plans](https://remind.dev)
 
 MIT License. Built for developers.
