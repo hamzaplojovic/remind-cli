@@ -13,7 +13,7 @@ from remind.models import Config as ConfigModel
 from remind.models import PriorityLevel, Reminder
 from remind.premium import PremiumRequired, get_license_manager
 from remind.scheduler import Scheduler
-from remind.utils import parse_priority
+from remind.utils import format_datetime, parse_priority
 
 app = typer.Typer(help="Remind: AI-powered reminder CLI")
 
@@ -27,10 +27,14 @@ def display_reminder(
     status = "✓" if reminder.done_at else "○"
     typer.echo(f"{status} ID {reminder.id}: {reminder.text}")
 
-    due_line = f"  Due: {reminder.due_at}"
+    due_str = format_datetime(reminder.due_at)
     if show_priority:
-        due_line += f" | Priority: {reminder.priority.value}"
-    typer.echo(due_line)
+        priority_icon = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(
+            reminder.priority.value, "⚪"
+        )
+        typer.echo(f"  {due_str} {priority_icon}")
+    else:
+        typer.echo(f"  {due_str}")
 
     if show_ai_text and reminder.ai_suggested_text:
         typer.echo(f"  Suggested: {reminder.ai_suggested_text}")
@@ -174,9 +178,49 @@ def list(
         typer.echo("No reminders found.")
         return
 
-    typer.echo("\n📋 Reminders:")
-    for reminder in reminders:
-        display_reminder(reminder, show_priority=True, show_ai_text=True)
+    # Categorize reminders by due date
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+
+    def ensure_aware(dt):
+        """Convert naive datetime to aware (UTC)."""
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+    overdue = [r for r in reminders if ensure_aware(r.due_at) < now]
+    due_today = [r for r in reminders if ensure_aware(r.due_at).date() == now.date()]
+    upcoming = [r for r in reminders if ensure_aware(r.due_at) > now]
+
+    # Show summary
+    summary_parts = [f"{len(reminders)} total"]
+    if overdue:
+        summary_parts.append(f"{len(overdue)} overdue")
+    if due_today:
+        summary_parts.append(f"{len(due_today)} today")
+    if upcoming:
+        summary_parts.append(f"{len(upcoming)} upcoming")
+
+    typer.echo(f"\n📋 Reminders: {', '.join(summary_parts)}")
+
+    # Show overdue first (most important)
+    if overdue:
+        typer.echo("\n⚠️  Overdue:")
+        for reminder in overdue:
+            display_reminder(reminder, show_priority=True, show_ai_text=False)
+
+    # Then due today
+    if due_today:
+        typer.echo("\n📅 Due today:")
+        for reminder in due_today:
+            display_reminder(reminder, show_priority=True, show_ai_text=False)
+
+    # Then upcoming (limit to 10)
+    if upcoming:
+        typer.echo("\n📆 Upcoming:")
+        for reminder in upcoming[:10]:
+            display_reminder(reminder, show_priority=True, show_ai_text=False)
+        if len(upcoming) > 10:
+            typer.echo(f"  ... and {len(upcoming) - 10} more")
 
 
 @app.command()

@@ -1,6 +1,7 @@
 """Utility functions shared across Remind modules."""
 
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -84,3 +85,48 @@ def parse_priority(
         return PriorityLevel(priority_str.lower())
     except (ValueError, AttributeError):
         return default
+
+
+def format_datetime(dt: datetime) -> str:
+    """
+    Format datetime in a user-friendly relative format.
+
+    Args:
+        dt: DateTime to format (naive or aware)
+
+    Returns:
+        Formatted string (e.g., "today at 9am", "in 2 days", "overdue by 3 days")
+    """
+    # Ensure datetime is timezone-aware for comparison
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    now = datetime.now(timezone.utc)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    dt_date = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    time_str = dt.strftime("%I:%M %p").lstrip("0").replace(" 0", " ")
+
+    # Check if today
+    if dt_date == today:
+        return f"today at {time_str}"
+
+    # Check if tomorrow
+    tomorrow = today.replace(day=today.day + 1)
+    if dt_date == tomorrow:
+        return f"tomorrow at {time_str}"
+
+    # Check if overdue
+    if dt < now:
+        days_ago = (now - dt).days
+        if days_ago == 0:
+            return f"overdue (today)"
+        return f"overdue by {days_ago} day{'s' if days_ago > 1 else ''}"
+
+    # Future dates
+    days_ahead = (dt_date - today).days
+    if days_ahead < 7:
+        return f"in {days_ahead} day{'s' if days_ahead > 1 else ''} at {time_str}"
+
+    # Far future - show the date
+    return dt.strftime("%b %d at %I:%M %p").lstrip("0")
