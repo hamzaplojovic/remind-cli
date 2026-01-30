@@ -1,6 +1,7 @@
 """Notification system for Remind."""
 
 import platform
+import subprocess
 from typing import Callable, Optional
 
 try:
@@ -22,6 +23,41 @@ class NotificationManager:
                 "notify-py not installed. Install with: pip install notify-py"
             )
 
+    def _play_sound(self, urgency: str = "normal") -> None:
+        """Play an annoying alert sound based on urgency."""
+        if self.platform == "Darwin":  # macOS
+            # Use system alert sounds - Glass is annoying enough
+            sounds = {
+                "critical": "Glass",  # Very annoying
+                "normal": "Alert",    # Medium annoying
+                "low": "Pop",         # Less annoying
+            }
+            sound = sounds.get(urgency, "Alert")
+            try:
+                subprocess.run(
+                    ["afplay", f"/System/Library/Sounds/{sound}.aiff"],
+                    timeout=2,
+                    capture_output=True,
+                )
+            except Exception:
+                pass  # Sound failed but notification still sent
+        elif self.platform == "Linux":
+            # Use system sounds on Linux
+            sounds = {
+                "critical": "alarm-clock-elapsed",
+                "normal": "dialog-warning",
+                "low": "complete",
+            }
+            sound = sounds.get(urgency, "dialog-warning")
+            try:
+                subprocess.run(
+                    ["paplay", f"/usr/share/sounds/freedesktop/stereo/{sound}.oga"],
+                    timeout=2,
+                    capture_output=True,
+                )
+            except Exception:
+                pass  # Sound failed but notification still sent
+
     def notify(
         self,
         title: str,
@@ -38,12 +74,16 @@ class NotificationManager:
             message: Notification body
             urgency: "low", "normal", "critical"
             callback: Optional callback function when notification is clicked
-            sound: Whether to play a sound
+            sound: Whether to play an annoying alert sound
 
         Returns:
             True if notification sent successfully, False otherwise
         """
         try:
+            # Play sound first if enabled
+            if sound:
+                self._play_sound(urgency)
+
             notification = Notify()
             notification.title = title
             notification.message = message
