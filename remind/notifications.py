@@ -4,7 +4,7 @@ import platform
 from typing import Callable, Optional
 
 try:
-    from notify_py import Notify
+    from notifypy import Notify
 except ImportError:
     Notify = None  # type: ignore
 
