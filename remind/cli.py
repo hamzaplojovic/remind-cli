@@ -17,6 +17,24 @@ from remind.scheduler import Scheduler
 app = typer.Typer(help="Remind: AI-powered reminder CLI")
 
 
+def display_reminder(
+    reminder: Reminder,
+    show_priority: bool = False,
+    show_ai_text: bool = False,
+) -> None:
+    """Display a single reminder with consistent formatting."""
+    status = "✓" if reminder.done_at else "○"
+    typer.echo(f"{status} ID {reminder.id}: {reminder.text}")
+
+    due_line = f"  Due: {reminder.due_at}"
+    if show_priority:
+        due_line += f" | Priority: {reminder.priority.value}"
+    typer.echo(due_line)
+
+    if show_ai_text and reminder.ai_suggested_text:
+        typer.echo(f"  Suggested: {reminder.ai_suggested_text}")
+
+
 def get_db() -> Database:
     """Get database instance."""
     return Database()
@@ -151,11 +169,7 @@ def list(
 
     typer.echo("\n📋 Reminders:")
     for reminder in reminders:
-        status = "✓" if reminder.done_at else "○"
-        typer.echo(f"{status} ID {reminder.id}: {reminder.text}")
-        typer.echo(f"  Due: {reminder.due_at} | Priority: {reminder.priority.value}")
-        if reminder.ai_suggested_text:
-            typer.echo(f"  Suggested: {reminder.ai_suggested_text}")
+        display_reminder(reminder, show_priority=True, show_ai_text=True)
 
 
 @app.command()
@@ -186,9 +200,7 @@ def search(query: str = typer.Argument(..., help="Search query")) -> None:
 
     typer.echo(f"\n🔍 Results for '{query}':")
     for reminder in results:
-        status = "✓" if reminder.done_at else "○"
-        typer.echo(f"{status} ID {reminder.id}: {reminder.text}")
-        typer.echo(f"  Due: {reminder.due_at}")
+        display_reminder(reminder, show_priority=False, show_ai_text=False)
 
 
 @app.command()
