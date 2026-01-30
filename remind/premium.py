@@ -58,11 +58,10 @@ class LicenseManager:
         except Exception as e:
             raise ValueError(f"Could not load license: {e}")
 
-    def create_license(
-        self, token: str, email: str | None = None
-    ) -> License:
+    def create_license(self, token: str, email: str | None = None) -> License:
         """Create and save a new license."""
         from datetime import timezone
+
         license_obj = License(token=token, created_at=datetime.now(timezone.utc), email=email)
 
         # Ensure directory exists

@@ -64,6 +64,7 @@ class PlatformCapabilities:
         """
         try:
             import notifypy  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -145,9 +146,7 @@ class PlatformCapabilities:
 
         if platform.is_macos:
             report["launchctl_available"] = PlatformCapabilities.test_launchctl()
-            report["launchd_services_available"] = (
-                PlatformCapabilities.test_launchd_user_services()
-            )
+            report["launchd_services_available"] = PlatformCapabilities.test_launchd_user_services()
         elif platform.is_linux:
             report["systemd_available"] = PlatformCapabilities.test_systemd()
             report["dbus_available"] = PlatformCapabilities.test_dbus()
@@ -182,10 +181,7 @@ def check_critical_capabilities() -> list[str]:
     report = PlatformCapabilities.get_capabilities_report()
 
     if not report["notifications_available"]:
-        warnings.append(
-            "⚠️  Notifications not available. "
-            "Install with: pip install notify-py"
-        )
+        warnings.append("⚠️  Notifications not available. Install with: pip install notify-py")
 
     if not report["sound_player_available"]:
         from remind.platform_utils import get_platform
@@ -195,8 +191,7 @@ def check_critical_capabilities() -> list[str]:
 
         if platform.is_linux:
             warnings.append(
-                f"⚠️  Sound player '{player}' not found. "
-                "Install with: sudo apt install pulseaudio"
+                f"⚠️  Sound player '{player}' not found. Install with: sudo apt install pulseaudio"
             )
         elif platform.is_macos:
             warnings.append(
@@ -204,14 +199,8 @@ def check_critical_capabilities() -> list[str]:
                 "This should not happen on standard macOS installations."
             )
 
-    if (
-        report.get("systemd_available") is False
-        and report.get("launchctl_available") is False
-    ):
-        warnings.append(
-            "⚠️  No supported scheduler backend found. "
-            "Daemon mode will not work."
-        )
+    if report.get("systemd_available") is False and report.get("launchctl_available") is False:
+        warnings.append("⚠️  No supported scheduler backend found. Daemon mode will not work.")
 
     return warnings
 

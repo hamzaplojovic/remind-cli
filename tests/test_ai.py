@@ -56,8 +56,6 @@ def test_get_ai_manager_without_params():
 
 def test_get_ai_manager_with_params():
     """Test get_ai_manager returns manager with backend URL and token."""
-    manager = get_ai_manager(
-        backend_url="http://localhost:8000", license_token="test_token"
-    )
+    manager = get_ai_manager(backend_url="http://localhost:8000", license_token="test_token")
     assert manager is not None
     assert isinstance(manager, AIManager)

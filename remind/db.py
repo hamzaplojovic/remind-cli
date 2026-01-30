@@ -124,9 +124,7 @@ class Database:
     def list_all_reminders(self) -> list[Reminder]:
         """List all reminders, including done ones."""
         with self.get_session() as session:
-            reminders = (
-                session.query(ReminderModel).order_by(ReminderModel.due_at).all()
-            )
+            reminders = session.query(ReminderModel).order_by(ReminderModel.due_at).all()
             return [r.to_pydantic() for r in reminders]
 
     def mark_done(self, reminder_id: int) -> Reminder | None:

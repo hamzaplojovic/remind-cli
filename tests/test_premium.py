@@ -1,6 +1,5 @@
 """Tests for premium features."""
 
-
 import pytest
 
 from remind.premium import LicenseManager, PremiumRequired

@@ -56,7 +56,9 @@ def test_suggest_reminder_success(mock_settings, mock_openai_class):
     mock_openai_class.return_value = mock_client
 
     mock_response = MagicMock()
-    mock_response.choices[0].message.content = '{"suggested_text": "Call mom tomorrow", "priority": "high", "due_time_suggestion": "tomorrow 3pm"}'
+    mock_response.choices[
+        0
+    ].message.content = '{"suggested_text": "Call mom tomorrow", "priority": "high", "due_time_suggestion": "tomorrow 3pm"}'
     mock_response.usage.prompt_tokens = 50
     mock_response.usage.completion_tokens = 20
 
@@ -85,7 +87,11 @@ def test_suggest_reminder_with_null_due_time(mock_settings, mock_openai_class):
     mock_openai_class.return_value = mock_client
 
     mock_response = MagicMock()
-    mock_response.choices[0].message.content = '{"suggested_text": "Buy milk", "priority": "medium", "due_time_suggestion": null}'
+    mock_response.choices[
+        0
+    ].message.content = (
+        '{"suggested_text": "Buy milk", "priority": "medium", "due_time_suggestion": null}'
+    )
     mock_response.usage.prompt_tokens = 40
     mock_response.usage.completion_tokens = 15
 

@@ -18,6 +18,7 @@ def test_db():
 
 # Platform-specific fixtures
 
+
 @pytest.fixture
 def skip_if_windows():
     """Skip test on Windows."""

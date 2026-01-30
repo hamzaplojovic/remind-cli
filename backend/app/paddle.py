@@ -25,11 +25,7 @@ def verify_paddle_webhook(raw_body: bytes, signature: str) -> bool:
     if not settings.paddle_webhook_secret:
         return False
 
-    expected = hmac.new(
-        settings.paddle_webhook_secret.encode(),
-        raw_body,
-        "sha256"
-    ).hexdigest()
+    expected = hmac.new(settings.paddle_webhook_secret.encode(), raw_body, "sha256").hexdigest()
 
     return hmac.compare_digest(expected, signature)
 

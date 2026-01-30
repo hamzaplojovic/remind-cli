@@ -24,14 +24,10 @@ def ensure_scheduler_installed() -> None:
     scheduler_installed = False
 
     if system == "Darwin":  # macOS
-        plist_path = os.path.expanduser(
-            "~/Library/LaunchAgents/com.remind.scheduler.plist"
-        )
+        plist_path = os.path.expanduser("~/Library/LaunchAgents/com.remind.scheduler.plist")
         scheduler_installed = os.path.exists(plist_path)
     elif system == "Linux":
-        service_path = os.path.expanduser(
-            "~/.config/systemd/user/remind-scheduler.service"
-        )
+        service_path = os.path.expanduser("~/.config/systemd/user/remind-scheduler.service")
         scheduler_installed = os.path.exists(service_path)
 
     # Auto-install on first use
@@ -103,9 +99,7 @@ def add(
     priority: str | None = typer.Option(
         None, "--priority", "-p", help="Priority level: high, medium, low"
     ),
-    project: str | None = typer.Option(
-        None, "--project", "-c", help="Project context"
-    ),
+    project: str | None = typer.Option(None, "--project", "-c", help="Project context"),
     no_ai: bool = typer.Option(False, "--no-ai", help="Skip AI suggestions"),
 ) -> None:
     """Add a new reminder."""
@@ -202,9 +196,7 @@ def add(
 @app.command()
 def list(
     all: bool = typer.Option(False, "--all", "-a", help="Show all reminders including done"),
-    project: str | None = typer.Option(
-        None, "--project", "-c", help="Filter by project"
-    ),
+    project: str | None = typer.Option(None, "--project", "-c", help="Filter by project"),
 ) -> None:
     """List reminders."""
     db = get_db()
@@ -320,7 +312,9 @@ def settings(
         typer.echo(f"  Timezone: {config.timezone}")
         typer.echo(f"  Scheduler interval: {config.scheduler_interval_minutes}m")
         typer.echo(f"  AI suggestions: {'enabled' if config.ai_rephrasing_enabled else 'disabled'}")
-        typer.echo(f"  Notification sounds: {'enabled' if config.notification_sound_enabled else 'disabled'}")
+        typer.echo(
+            f"  Notification sounds: {'enabled' if config.notification_sound_enabled else 'disabled'}"
+        )
         typer.echo(f"  Nudge intervals: {config.nudge_intervals_minutes}")
         return
 
@@ -467,6 +461,7 @@ def scheduler(
     if install:
         typer.echo("Installing scheduler as background service...")
         from remind.scheduler import Scheduler
+
         s = Scheduler()
         s.install_background_service()
         typer.echo("✓ Scheduler installed. It will start on next login/boot.")
@@ -479,6 +474,7 @@ def scheduler(
     # Run scheduler daemon
     typer.echo("Starting scheduler daemon (Ctrl+C to stop)...")
     from remind.scheduler import run_scheduler
+
     run_scheduler()
 
 
@@ -546,9 +542,7 @@ def doctor() -> None:
 
         system = platform.system()
         if system == "Darwin":  # macOS
-            plist_path = os.path.expanduser(
-                "~/Library/LaunchAgents/com.remind.scheduler.plist"
-            )
+            plist_path = os.path.expanduser("~/Library/LaunchAgents/com.remind.scheduler.plist")
             if os.path.exists(plist_path):
                 typer.echo("   ✓ Background service installed (macOS LaunchAgent)")
             else:
@@ -556,9 +550,7 @@ def doctor() -> None:
                     "   ⚠️  Background service NOT installed. Run: remind scheduler --install"
                 )
         elif system == "Linux":
-            service_path = os.path.expanduser(
-                "~/.config/systemd/user/remind-scheduler.service"
-            )
+            service_path = os.path.expanduser("~/.config/systemd/user/remind-scheduler.service")
             if os.path.exists(service_path):
                 # Check if running
                 try:
@@ -575,9 +567,7 @@ def doctor() -> None:
                             "Start it: systemctl --user start remind-scheduler.service"
                         )
                 except Exception:
-                    typer.echo(
-                        "   ⚠️  Background service installed (systemd) but status unknown"
-                    )
+                    typer.echo("   ⚠️  Background service installed (systemd) but status unknown")
             else:
                 typer.echo(
                     "   ⚠️  Background service NOT installed. Run: remind scheduler --install"

@@ -59,6 +59,7 @@ def check_rate_limit(db: Session, user_id: int) -> int:
     Raises QuotaError if rate limit exceeded.
     """
     from app.config import get_settings
+
     settings = get_settings()
 
     rate_limit = db.query(RateLimitModel).filter(RateLimitModel.user_id == user_id).first()
@@ -77,7 +78,7 @@ def check_rate_limit(db: Session, user_id: int) -> int:
             rate_limit = RateLimitModel(
                 user_id=user_id,
                 request_count=0,
-                reset_at=now + timedelta(seconds=settings.rate_limit_window_seconds)
+                reset_at=now + timedelta(seconds=settings.rate_limit_window_seconds),
             )
             db.add(rate_limit)
         else:
@@ -101,11 +102,15 @@ def get_monthly_quota_used(db: Session, user_id: int) -> int:
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    count = db.query(UsageLogModel).filter(
-        UsageLogModel.user_id == user_id,
-        UsageLogModel.feature == "ai_suggestion",
-        UsageLogModel.timestamp >= month_start
-    ).count()
+    count = (
+        db.query(UsageLogModel)
+        .filter(
+            UsageLogModel.user_id == user_id,
+            UsageLogModel.feature == "ai_suggestion",
+            UsageLogModel.timestamp >= month_start,
+        )
+        .count()
+    )
 
     return count
 
@@ -124,7 +129,9 @@ def check_ai_quota(db: Session, user: UserModel) -> None:
         raise QuotaError(f"Monthly AI quota exhausted. Used {used}/{monthly_quota}")
 
 
-def log_usage(db: Session, user_id: int, input_tokens: int, output_tokens: int, cost_cents: int) -> None:
+def log_usage(
+    db: Session, user_id: int, input_tokens: int, output_tokens: int, cost_cents: int
+) -> None:
     """Log feature usage for billing."""
     log = UsageLogModel(
         user_id=user_id,
@@ -159,10 +166,12 @@ def get_usage_stats(db: Session, user: UserModel) -> dict:
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    total_cost = db.query(UsageLogModel).filter(
-        UsageLogModel.user_id == user.id,
-        UsageLogModel.timestamp >= month_start
-    ).with_entities(UsageLogModel.cost_cents).all()
+    total_cost = (
+        db.query(UsageLogModel)
+        .filter(UsageLogModel.user_id == user.id, UsageLogModel.timestamp >= month_start)
+        .with_entities(UsageLogModel.cost_cents)
+        .all()
+    )
 
     this_month_cost_cents = sum(row[0] for row in total_cost)
 
@@ -170,14 +179,18 @@ def get_usage_stats(db: Session, user: UserModel) -> dict:
     rate_limit = db.query(RateLimitModel).filter(RateLimitModel.user_id == user.id).first()
     if rate_limit:
         from app.config import get_settings
+
         settings = get_settings()
         rate_limit_remaining = max(0, settings.rate_limit_requests - rate_limit.request_count)
         rate_limit_reset_at = rate_limit.reset_at.isoformat()
     else:
         from app.config import get_settings
+
         settings = get_settings()
         rate_limit_remaining = settings.rate_limit_requests
-        rate_limit_reset_at = (datetime.now(timezone.utc) + timedelta(seconds=settings.rate_limit_window_seconds)).isoformat()
+        rate_limit_reset_at = (
+            datetime.now(timezone.utc) + timedelta(seconds=settings.rate_limit_window_seconds)
+        ).isoformat()
 
     return {
         "user_id": user.id,

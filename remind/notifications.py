@@ -39,9 +39,7 @@ class NotificationManager:
         )
 
         if not self.notifications_available and strict:
-            raise ImportError(
-                "notify-py not installed. Install with: pip install notify-py"
-            )
+            raise ImportError("notify-py not installed. Install with: pip install notify-py")
 
     def is_available(self) -> bool:
         """Check if notifications can be sent.
@@ -75,8 +73,8 @@ class NotificationManager:
             # Use system alert sounds on macOS
             sounds = {
                 "critical": "Glass",  # Very annoying
-                "normal": "Ping",     # Medium annoying
-                "low": "Pop",         # Less annoying
+                "normal": "Ping",  # Medium annoying
+                "low": "Pop",  # Less annoying
             }
             sound = sounds.get(urgency, "Ping")
             try:

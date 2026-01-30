@@ -75,9 +75,7 @@ def test_install_linux_service(mock_subprocess, tmp_path):
             scheduler._install_linux_service()
 
     # Verify service file was created
-    service_path = (
-        tmp_path / ".config" / "systemd" / "user" / "remind-scheduler.service"
-    )
+    service_path = tmp_path / ".config" / "systemd" / "user" / "remind-scheduler.service"
     assert service_path.exists()
 
     # Verify content

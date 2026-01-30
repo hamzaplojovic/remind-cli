@@ -90,9 +90,7 @@ def load_config() -> ConfigModel:
     # Parse nudge intervals
     if "nudge_intervals_minutes" not in config_data:
         nudge_str = settings.nudge_intervals_minutes
-        config_data["nudge_intervals_minutes"] = [
-            int(x.strip()) for x in nudge_str.split(",")
-        ]
+        config_data["nudge_intervals_minutes"] = [int(x.strip()) for x in nudge_str.split(",")]
 
     try:
         return ConfigModel(**config_data)

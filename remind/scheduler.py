@@ -47,8 +47,7 @@ class SchedulerState:
         for interval in nudge_intervals:
             if (
                 time_since_due > interval
-                and (datetime.now(timezone.utc) - last_nudge).total_seconds()
-                > interval * 60
+                and (datetime.now(timezone.utc) - last_nudge).total_seconds() > interval * 60
             ):
                 return True
 

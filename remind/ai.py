@@ -1,6 +1,5 @@
 """AI-powered features for Remind via backend API."""
 
-
 import httpx
 
 from remind.models import AIResponse
@@ -39,9 +38,7 @@ class AIManager:
             elif response.status_code == 429:
                 raise ValueError(response.json().get("detail", "Rate limited or quota exceeded"))
             elif response.status_code != 200:
-                raise ValueError(
-                    f"Backend error: {response.status_code} - {response.text}"
-                )
+                raise ValueError(f"Backend error: {response.status_code} - {response.text}")
 
             data = response.json()
 

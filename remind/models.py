@@ -63,6 +63,4 @@ class Config(BaseModel):
     ai_rephrasing_enabled: bool = True
     ai_backend_url: str | None = None  # Backend API URL for AI suggestions
     openai_api_key: str | None = None  # OpenAI API key (for local usage)
-    nudge_intervals_minutes: list[int] = Field(
-        default_factory=lambda: [5, 15, 60]
-    )
+    nudge_intervals_minutes: list[int] = Field(default_factory=lambda: [5, 15, 60])

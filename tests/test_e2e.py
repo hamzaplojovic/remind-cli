@@ -92,15 +92,9 @@ def test_e2e_full_workflow(test_db):
 
     # Add reminders
     reminder_a = test_db.add_reminder(
-        "Task A",
-        datetime.now(timezone.utc),
-        priority=PriorityLevel.HIGH
+        "Task A", datetime.now(timezone.utc), priority=PriorityLevel.HIGH
     )
-    test_db.add_reminder(
-        "Task B",
-        datetime.now(timezone.utc),
-        priority=PriorityLevel.LOW
-    )
+    test_db.add_reminder("Task B", datetime.now(timezone.utc), priority=PriorityLevel.LOW)
 
     # List all reminders
     all_reminders = test_db.list_all_reminders()
