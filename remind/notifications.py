@@ -44,12 +44,10 @@ class NotificationManager:
             True if notification sent successfully, False otherwise
         """
         try:
-            notification = Notify(
-                title=title,
-                message=message,
-                app_name=self.app_name,
-                urgency=urgency,
-            )
+            notification = Notify()
+            notification.title = title
+            notification.message = message
+            notification.app_name = self.app_name
 
             # Note: notify-py has limited callback support across platforms
             # This is a placeholder for future enhancement
@@ -57,7 +55,7 @@ class NotificationManager:
                 # Callback support varies by platform
                 pass
 
-            notification.send(block=False)
+            notification.send()
             return True
         except Exception as e:
             print(f"Error sending notification: {e}")
