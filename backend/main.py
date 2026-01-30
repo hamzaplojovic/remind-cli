@@ -4,13 +4,13 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from backend.database import get_db, init_db
-from backend.models import (
+from app.database import get_db, init_db
+from app.models import (
     SuggestReminderRequest,
     SuggestReminderResponse,
     UsageStats,
 )
-from backend.auth import (
+from app.auth import (
     authenticate_token,
     check_rate_limit,
     check_ai_quota,
@@ -18,15 +18,15 @@ from backend.auth import (
     increment_rate_limit,
     get_usage_stats,
 )
-from backend.ai import suggest_reminder
-from backend.paddle import (
+from app.ai import suggest_reminder
+from app.paddle import (
     verify_paddle_webhook,
     handle_subscription_created,
     handle_transaction_completed,
     create_license_token,
 )
-from backend.email import send_license_email
-from backend.database import UserModel
+from app.email import send_license_email
+from app.database import UserModel
 
 app = FastAPI(title="Remind Backend", version="0.1.0")
 
@@ -53,7 +53,7 @@ async def paddle_webhook(request: Request, db: Session = Depends(get_db)):
 
     Generates license token and sends to customer email.
     """
-    from backend.paddle import verify_paddle_webhook
+    from app.paddle import verify_paddle_webhook
 
     raw_body = await request.body()
     signature = request.headers.get("X-Paddle-Signature", "")
@@ -199,12 +199,12 @@ def api_usage_stats(
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     """Handle HTTP exceptions with proper JSON response."""
-    return {"detail": exc.detail}
+    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
 
 if __name__ == "__main__":
     import uvicorn
-    from backend.config import get_settings
+    from app.config import get_settings
 
     settings = get_settings()
     uvicorn.run(

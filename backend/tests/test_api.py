@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 def test_health_check():
     """Test health check endpoint."""
     from fastapi.testclient import TestClient
-    from backend.main import app
+    from main import app
 
     client = TestClient(app)
     response = client.get("/health")
@@ -15,14 +15,14 @@ def test_health_check():
     assert response.json() == {"status": "ok"}
 
 
-@patch("backend.main.authenticate_token")
-@patch("backend.main.check_rate_limit")
-@patch("backend.main.get_db")
+@patch("main.authenticate_token")
+@patch("main.check_rate_limit")
+@patch("main.get_db")
 def test_suggest_reminder_invalid_token(mock_get_db, mock_rate_limit, mock_auth):
     """Test suggestion endpoint with invalid token."""
     from fastapi.testclient import TestClient
-    from backend.main import app
-    from backend.auth import AuthError
+    from main import app
+    from app.auth import AuthError
 
     mock_auth.side_effect = AuthError("Invalid license token")
 
@@ -38,13 +38,13 @@ def test_suggest_reminder_invalid_token(mock_get_db, mock_rate_limit, mock_auth)
     assert "Invalid license" in response.json()["detail"]
 
 
-@patch("backend.main.log_usage")
-@patch("backend.main.increment_rate_limit")
-@patch("backend.main.check_ai_quota")
-@patch("backend.main.suggest_reminder")
-@patch("backend.main.check_rate_limit")
-@patch("backend.main.authenticate_token")
-@patch("backend.main.get_db")
+@patch("main.log_usage")
+@patch("main.increment_rate_limit")
+@patch("main.check_ai_quota")
+@patch("main.suggest_reminder")
+@patch("main.check_rate_limit")
+@patch("main.authenticate_token")
+@patch("main.get_db")
 def test_suggest_reminder_valid(
     mock_get_db,
     mock_auth,
@@ -56,8 +56,8 @@ def test_suggest_reminder_valid(
 ):
     """Test suggestion endpoint with valid token."""
     from fastapi.testclient import TestClient
-    from backend.main import app
-    from backend.models import PriorityLevel
+    from main import app
+    from app.models import PriorityLevel
     from unittest.mock import MagicMock
 
     # Create mock user
@@ -93,15 +93,15 @@ def test_suggest_reminder_valid(
     assert data["cost_cents"] == 1
 
 
-@patch("backend.main.check_ai_quota")
-@patch("backend.main.check_rate_limit")
-@patch("backend.main.authenticate_token")
-@patch("backend.main.get_db")
+@patch("main.check_ai_quota")
+@patch("main.check_rate_limit")
+@patch("main.authenticate_token")
+@patch("main.get_db")
 def test_suggest_reminder_quota_exceeded(mock_get_db, mock_auth, mock_rate_limit, mock_quota):
     """Test suggestion endpoint with exhausted quota."""
     from fastapi.testclient import TestClient
-    from backend.main import app
-    from backend.auth import QuotaError
+    from main import app
+    from app.auth import QuotaError
     from unittest.mock import MagicMock
 
     mock_user = MagicMock()
@@ -123,13 +123,13 @@ def test_suggest_reminder_quota_exceeded(mock_get_db, mock_auth, mock_rate_limit
     assert "quota exhausted" in response.json()["detail"]
 
 
-@patch("backend.main.authenticate_token")
-@patch("backend.main.get_db")
+@patch("main.authenticate_token")
+@patch("main.get_db")
 def test_usage_stats_invalid_token(mock_get_db, mock_auth):
     """Test usage stats endpoint with invalid token."""
     from fastapi.testclient import TestClient
-    from backend.main import app
-    from backend.auth import AuthError
+    from main import app
+    from app.auth import AuthError
 
     mock_auth.side_effect = AuthError("Invalid license token")
     mock_get_db.return_value = MagicMock()
@@ -140,13 +140,13 @@ def test_usage_stats_invalid_token(mock_get_db, mock_auth):
     assert "Invalid license" in response.json()["detail"]
 
 
-@patch("backend.main.get_usage_stats")
-@patch("backend.main.authenticate_token")
-@patch("backend.main.get_db")
+@patch("main.get_usage_stats")
+@patch("main.authenticate_token")
+@patch("main.get_db")
 def test_usage_stats_valid(mock_get_db, mock_auth, mock_stats):
     """Test usage stats endpoint with valid token."""
     from fastapi.testclient import TestClient
-    from backend.main import app
+    from main import app
     from unittest.mock import MagicMock
 
     mock_user = MagicMock()

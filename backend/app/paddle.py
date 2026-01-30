@@ -5,8 +5,8 @@ import json
 from datetime import datetime, timezone
 from typing import Optional
 
-from backend.config import get_settings
-from backend.database import UserModel
+from app.config import get_settings
+from app.database import UserModel
 
 
 # Paddle plan tier mapping (product IDs to plan tiers)

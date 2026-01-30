@@ -5,8 +5,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.database import Base, UserModel, RateLimitModel, UsageLogModel
-from backend.auth import (
+from app.database import Base, UserModel, RateLimitModel, UsageLogModel
+from app.auth import (
     authenticate_token,
     check_rate_limit,
     check_ai_quota,

@@ -4,8 +4,8 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
-from backend.database import UserModel, RateLimitModel, UsageLogModel
-from backend.models import PlanTier, PLAN_CONFIGS
+from app.database import UserModel, RateLimitModel, UsageLogModel
+from app.models import PlanTier, PLAN_CONFIGS
 
 
 class AuthError(HTTPException):
@@ -58,7 +58,7 @@ def check_rate_limit(db: Session, user_id: int) -> int:
     Returns remaining requests in this window.
     Raises QuotaError if rate limit exceeded.
     """
-    from backend.config import get_settings
+    from app.config import get_settings
     settings = get_settings()
 
     rate_limit = db.query(RateLimitModel).filter(RateLimitModel.user_id == user_id).first()
@@ -169,12 +169,12 @@ def get_usage_stats(db: Session, user: UserModel) -> dict:
     # Rate limit stats
     rate_limit = db.query(RateLimitModel).filter(RateLimitModel.user_id == user.id).first()
     if rate_limit:
-        from backend.config import get_settings
+        from app.config import get_settings
         settings = get_settings()
         rate_limit_remaining = max(0, settings.rate_limit_requests - rate_limit.request_count)
         rate_limit_reset_at = rate_limit.reset_at.isoformat()
     else:
-        from backend.config import get_settings
+        from app.config import get_settings
         settings = get_settings()
         rate_limit_remaining = settings.rate_limit_requests
         rate_limit_reset_at = (datetime.now(timezone.utc) + timedelta(seconds=settings.rate_limit_window_seconds)).isoformat()

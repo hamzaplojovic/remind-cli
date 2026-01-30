@@ -5,8 +5,8 @@ from typing import TypedDict
 
 import openai
 
-from backend.config import get_settings
-from backend.models import PriorityLevel
+from app.config import get_settings
+from app.models import PriorityLevel
 
 
 class AIResponse(TypedDict):

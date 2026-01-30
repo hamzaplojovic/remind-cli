@@ -3,8 +3,8 @@
 from unittest.mock import patch, MagicMock
 import pytest
 
-from backend.ai import calculate_cost, suggest_reminder
-from backend.models import PriorityLevel
+from app.ai import calculate_cost, suggest_reminder
+from app.models import PriorityLevel
 
 
 def test_calculate_cost():
@@ -25,7 +25,7 @@ def test_calculate_cost_large_tokens():
 
 def test_suggest_reminder_invalid_response():
     """Test handling of invalid AI response."""
-    with patch("backend.ai.openai.OpenAI") as mock_openai_class:
+    with patch("app.ai.openai.OpenAI") as mock_openai_class:
         mock_client = MagicMock()
         mock_openai_class.return_value = mock_client
 
@@ -41,8 +41,8 @@ def test_suggest_reminder_invalid_response():
             suggest_reminder("test reminder")
 
 
-@patch("backend.ai.openai.OpenAI")
-@patch("backend.ai.get_settings")
+@patch("app.ai.openai.OpenAI")
+@patch("app.ai.get_settings")
 def test_suggest_reminder_success(mock_settings, mock_openai_class):
     """Test successful AI suggestion."""
     # Mock settings
@@ -72,8 +72,8 @@ def test_suggest_reminder_success(mock_settings, mock_openai_class):
     assert result["output_tokens"] == 20
 
 
-@patch("backend.ai.openai.OpenAI")
-@patch("backend.ai.get_settings")
+@patch("app.ai.openai.OpenAI")
+@patch("app.ai.get_settings")
 def test_suggest_reminder_with_null_due_time(mock_settings, mock_openai_class):
     """Test AI suggestion with null due time."""
     mock_settings_obj = MagicMock()

@@ -27,7 +27,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["backend"]
+packages = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

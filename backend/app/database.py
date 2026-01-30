@@ -8,7 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
 if TYPE_CHECKING:
-    from backend.config import Settings
+    from app.config import Settings
 
 Base = declarative_base()
 
@@ -65,7 +65,7 @@ class RateLimitModel(Base):
 # Database session management
 def get_engine():
     """Create database engine."""
-    from backend.config import get_settings
+    from app.config import get_settings
     settings = get_settings()
     is_sqlite = "sqlite" in settings.database_url
     connect_args = {"check_same_thread": False} if is_sqlite else {}

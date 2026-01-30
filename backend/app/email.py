@@ -4,7 +4,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from backend.config import get_settings
+from app.config import get_settings
 
 
 def send_license_email(email: str, license_token: str, plan_tier: str) -> bool:

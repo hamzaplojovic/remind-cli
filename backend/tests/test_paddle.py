@@ -8,33 +8,33 @@ from unittest.mock import patch, MagicMock
 
 def test_verify_paddle_webhook_valid():
     """Test Paddle webhook signature verification."""
-    from backend.paddle import verify_paddle_webhook
+    from app.paddle import verify_paddle_webhook
 
     secret = "test_secret"
     body = b'{"test": "data"}'
     signature = hmac.new(secret.encode(), body, "sha256").hexdigest()
 
-    with patch("backend.paddle.get_settings") as mock_settings:
+    with patch("app.paddle.get_settings") as mock_settings:
         mock_settings.return_value.paddle_webhook_secret = secret
         assert verify_paddle_webhook(body, signature) is True
 
 
 def test_verify_paddle_webhook_invalid():
     """Test Paddle webhook verification fails with bad signature."""
-    from backend.paddle import verify_paddle_webhook
+    from app.paddle import verify_paddle_webhook
 
     secret = "test_secret"
     body = b'{"test": "data"}'
     bad_signature = "invalid_signature"
 
-    with patch("backend.paddle.get_settings") as mock_settings:
+    with patch("app.paddle.get_settings") as mock_settings:
         mock_settings.return_value.paddle_webhook_secret = secret
         assert verify_paddle_webhook(body, bad_signature) is False
 
 
 def test_get_plan_tier_from_paddle_product():
     """Test mapping Paddle product IDs to plan tiers."""
-    from backend.paddle import get_plan_tier_from_paddle_product, PADDLE_PRODUCT_MAPPING
+    from app.paddle import get_plan_tier_from_paddle_product, PADDLE_PRODUCT_MAPPING
 
     # No mapping by default
     assert get_plan_tier_from_paddle_product("unknown_product") is None
@@ -42,7 +42,7 @@ def test_get_plan_tier_from_paddle_product():
 
 def test_handle_subscription_created():
     """Test handling subscription.created event."""
-    from backend.paddle import handle_subscription_created
+    from app.paddle import handle_subscription_created
 
     event_data = {
         "data": {
@@ -53,7 +53,7 @@ def test_handle_subscription_created():
         }
     }
 
-    with patch("backend.paddle.get_plan_tier_from_paddle_product") as mock_tier:
+    with patch("app.paddle.get_plan_tier_from_paddle_product") as mock_tier:
         mock_tier.return_value = "pro"
         result = handle_subscription_created(event_data)
 
@@ -62,7 +62,7 @@ def test_handle_subscription_created():
 
 def test_handle_subscription_created_missing_email():
     """Test subscription event with missing email."""
-    from backend.paddle import handle_subscription_created
+    from app.paddle import handle_subscription_created
 
     event_data = {
         "data": {
@@ -78,7 +78,7 @@ def test_handle_subscription_created_missing_email():
 
 def test_handle_transaction_completed():
     """Test handling transaction.completed event."""
-    from backend.paddle import handle_transaction_completed
+    from app.paddle import handle_transaction_completed
 
     event_data = {
         "data": {
@@ -89,7 +89,7 @@ def test_handle_transaction_completed():
         }
     }
 
-    with patch("backend.paddle.get_plan_tier_from_paddle_product") as mock_tier:
+    with patch("app.paddle.get_plan_tier_from_paddle_product") as mock_tier:
         mock_tier.return_value = "team"
         result = handle_transaction_completed(event_data)
 
@@ -98,7 +98,7 @@ def test_handle_transaction_completed():
 
 def test_create_license_token():
     """Test license token generation."""
-    from backend.paddle import create_license_token
+    from app.paddle import create_license_token
 
     token = create_license_token("pro", "user@example.com")
 
@@ -108,7 +108,7 @@ def test_create_license_token():
 
 def test_create_license_token_format():
     """Test that tokens are consistent format."""
-    from backend.paddle import create_license_token
+    from app.paddle import create_license_token
 
     token1 = create_license_token("indie", "user@example.com")
     token2 = create_license_token("indie", "user@example.com")
