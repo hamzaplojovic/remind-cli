@@ -1,0 +1,14 @@
+[Unit]
+Description=Remind - Background Reminder Scheduler
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/remind scheduler
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

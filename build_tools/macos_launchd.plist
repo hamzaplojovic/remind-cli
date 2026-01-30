@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.remind.scheduler</string>
+    <key>Program</key>
+    <string>$HOME/.local/bin/remind</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$HOME/.local/bin/remind</string>
+        <string>scheduler</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>$HOME/.remind/logs/scheduler.log</string>
+    <key>StandardErrorPath</key>
+    <string>$HOME/.remind/logs/scheduler.error.log</string>
+</dict>
+</plist>
