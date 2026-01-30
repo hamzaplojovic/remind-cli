@@ -26,6 +26,9 @@ dev = [
     "pytest-mock",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["backend"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
