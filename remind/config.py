@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from remind.models import Config as ConfigModel
+from remind.utils import get_app_dir as _get_app_dir
 
 
 class Settings(BaseSettings):
@@ -31,9 +32,7 @@ class Settings(BaseSettings):
 
 def get_app_dir() -> Path:
     """Get the application directory, creating it if necessary."""
-    app_dir = Path.home() / ".remind"
-    app_dir.mkdir(parents=True, exist_ok=True)
-    return app_dir
+    return _get_app_dir()
 
 
 def get_db_path() -> Path:

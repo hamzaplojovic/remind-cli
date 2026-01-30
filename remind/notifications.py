@@ -26,21 +26,27 @@ class NotificationManager:
     def _play_sound(self, urgency: str = "normal") -> None:
         """Play an annoying alert sound based on urgency."""
         if self.platform == "Darwin":  # macOS
-            # Use system alert sounds - Glass is annoying enough
+            # Use system alert sounds
             sounds = {
                 "critical": "Glass",  # Very annoying
-                "normal": "Alert",    # Medium annoying
+                "normal": "Ping",     # Medium annoying
                 "low": "Pop",         # Less annoying
             }
-            sound = sounds.get(urgency, "Alert")
+            sound = sounds.get(urgency, "Ping")
             try:
                 subprocess.run(
                     ["afplay", f"/System/Library/Sounds/{sound}.aiff"],
                     timeout=2,
                     capture_output=True,
+                    check=True,
                 )
-            except Exception:
-                pass  # Sound failed but notification still sent
+            except subprocess.CalledProcessError as e:
+                # Log error but don't fail notification
+                print(f"Warning: Failed to play sound {sound}: {e}")
+            except FileNotFoundError:
+                print(f"Warning: afplay not found on system")
+            except Exception as e:
+                print(f"Warning: Error playing sound: {e}")
         elif self.platform == "Linux":
             # Use system sounds on Linux
             sounds = {

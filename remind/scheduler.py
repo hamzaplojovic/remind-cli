@@ -14,6 +14,7 @@ from remind.db import Database
 from remind.models import Reminder
 from remind.notifications import NotificationManager
 from remind.premium import get_license_manager
+from remind.utils import ensure_dir, get_app_dir, get_logs_dir, run_command
 
 
 class SchedulerState:
@@ -186,11 +187,11 @@ class Scheduler:
         remind_path = os.path.abspath(sys.argv[0])
 
         # Create LaunchAgent directory
-        la_dir = Path.home() / "Library" / "LaunchAgents"
-        la_dir.mkdir(parents=True, exist_ok=True)
+        la_dir = ensure_dir(Path.home() / "Library" / "LaunchAgents")
 
         # Create plist file
         plist_path = la_dir / "com.remind.scheduler.plist"
+        logs_dir = get_logs_dir()
 
         plist_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -210,9 +211,9 @@ class Scheduler:
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>{Path.home()}/.remind/logs/scheduler.log</string>
+    <string>{logs_dir}/scheduler.log</string>
     <key>StandardErrorPath</key>
-    <string>{Path.home()}/.remind/logs/scheduler.error.log</string>
+    <string>{logs_dir}/scheduler.error.log</string>
 </dict>
 </plist>
 """
@@ -220,17 +221,9 @@ class Scheduler:
         # Write plist file
         plist_path.write_text(plist_content)
 
-        # Create logs directory
-        logs_dir = Path.home() / ".remind" / "logs"
-        logs_dir.mkdir(parents=True, exist_ok=True)
-
         # Load the service
         try:
-            subprocess.run(
-                ["launchctl", "load", str(plist_path)],
-                check=True,
-                capture_output=True,
-            )
+            run_command(["launchctl", "load", str(plist_path)])
             print(f"✓ macOS LaunchAgent installed: {plist_path}")
         except subprocess.CalledProcessError as e:
             print(f"Error loading LaunchAgent: {e.stderr.decode()}")
@@ -243,8 +236,7 @@ class Scheduler:
         remind_path = os.path.abspath(sys.argv[0])
 
         # Create systemd user services directory
-        sd_dir = Path.home() / ".config" / "systemd" / "user"
-        sd_dir.mkdir(parents=True, exist_ok=True)
+        sd_dir = ensure_dir(Path.home() / ".config" / "systemd" / "user")
 
         # Create service file
         service_path = sd_dir / "remind-scheduler.service"
@@ -269,27 +261,14 @@ WantedBy=default.target
         service_path.write_text(service_content)
         service_path.chmod(0o644)
 
-        # Create logs directory
-        logs_dir = Path.home() / ".remind" / "logs"
-        logs_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure logs directory exists
+        get_logs_dir()
 
         # Reload and enable the service
         try:
-            subprocess.run(
-                ["systemctl", "--user", "daemon-reload"],
-                check=True,
-                capture_output=True,
-            )
-            subprocess.run(
-                ["systemctl", "--user", "enable", "remind-scheduler.service"],
-                check=True,
-                capture_output=True,
-            )
-            subprocess.run(
-                ["systemctl", "--user", "start", "remind-scheduler.service"],
-                check=True,
-                capture_output=True,
-            )
+            run_command(["systemctl", "--user", "daemon-reload"])
+            run_command(["systemctl", "--user", "enable", "remind-scheduler.service"])
+            run_command(["systemctl", "--user", "start", "remind-scheduler.service"])
             print(f"✓ Linux systemd service installed: {service_path}")
         except subprocess.CalledProcessError as e:
             print(f"Error setting up systemd service: {e.stderr.decode()}")
