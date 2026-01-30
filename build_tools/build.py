@@ -1,6 +1,5 @@
 """Build script for creating standalone binaries."""
 
-import os
 import platform
 import subprocess
 import sys

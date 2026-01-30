@@ -1,13 +1,9 @@
 """Paddle payment integration for license issuing."""
 
 import hmac
-import json
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
 
 from app.config import get_settings
-from app.database import UserModel
-
 
 # Paddle plan tier mapping (product IDs to plan tiers)
 PADDLE_PRODUCT_MAPPING = {
@@ -30,7 +26,7 @@ def verify_paddle_webhook(raw_body: bytes, signature: str) -> bool:
     return hmac.compare_digest(expected, signature)
 
 
-def get_plan_tier_from_paddle_product(product_id: str) -> Optional[str]:
+def get_plan_tier_from_paddle_product(product_id: str) -> str | None:
     """Map Paddle product ID to plan tier.
 
     Return None if product is not recognized (e.g., free tier).
@@ -44,7 +40,7 @@ def get_plan_tier_from_paddle_product(product_id: str) -> Optional[str]:
     return None
 
 
-def handle_subscription_created(event_data: dict) -> Optional[tuple[str, str]]:
+def handle_subscription_created(event_data: dict) -> tuple[str, str] | None:
     """Handle Paddle subscription.created webhook.
 
     Returns (email, license_token) tuple if successful, None otherwise.
@@ -70,7 +66,7 @@ def handle_subscription_created(event_data: dict) -> Optional[tuple[str, str]]:
         return None
 
 
-def handle_transaction_completed(event_data: dict) -> Optional[tuple[str, str]]:
+def handle_transaction_completed(event_data: dict) -> tuple[str, str] | None:
     """Handle Paddle transaction.completed webhook (for one-time purchases).
 
     Returns (email, license_token) tuple if successful, None otherwise.
@@ -96,14 +92,13 @@ def handle_transaction_completed(event_data: dict) -> Optional[tuple[str, str]]:
 def create_license_token(
     plan_tier: str,
     email: str,
-    expires_at: Optional[datetime] = None,
+    expires_at: datetime | None = None,
 ) -> str:
     """Generate a license token for a Paddle purchase.
 
     Token format: remind_{tier}_{random_hex}
     """
     import secrets
-    import hashlib
 
     random_suffix = secrets.token_hex(12)  # 24 char hex
     token = f"remind_{plan_tier}_{random_suffix}"

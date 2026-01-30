@@ -1,7 +1,6 @@
 """Tests for FastAPI endpoints."""
 
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import MagicMock, patch
 
 
 def test_health_check():
@@ -20,9 +19,9 @@ def test_health_check():
 @patch("main.get_db")
 def test_suggest_reminder_invalid_token(mock_get_db, mock_rate_limit, mock_auth):
     """Test suggestion endpoint with invalid token."""
+    from app.auth import AuthError
     from fastapi.testclient import TestClient
     from main import app
-    from app.auth import AuthError
 
     mock_auth.side_effect = AuthError("Invalid license token")
 
@@ -55,10 +54,11 @@ def test_suggest_reminder_valid(
     mock_log,
 ):
     """Test suggestion endpoint with valid token."""
+    from unittest.mock import MagicMock
+
+    from app.models import PriorityLevel
     from fastapi.testclient import TestClient
     from main import app
-    from app.models import PriorityLevel
-    from unittest.mock import MagicMock
 
     # Create mock user
     mock_user = MagicMock()
@@ -99,10 +99,11 @@ def test_suggest_reminder_valid(
 @patch("main.get_db")
 def test_suggest_reminder_quota_exceeded(mock_get_db, mock_auth, mock_rate_limit, mock_quota):
     """Test suggestion endpoint with exhausted quota."""
+    from unittest.mock import MagicMock
+
+    from app.auth import QuotaError
     from fastapi.testclient import TestClient
     from main import app
-    from app.auth import QuotaError
-    from unittest.mock import MagicMock
 
     mock_user = MagicMock()
     mock_user.id = 1
@@ -127,9 +128,9 @@ def test_suggest_reminder_quota_exceeded(mock_get_db, mock_auth, mock_rate_limit
 @patch("main.get_db")
 def test_usage_stats_invalid_token(mock_get_db, mock_auth):
     """Test usage stats endpoint with invalid token."""
+    from app.auth import AuthError
     from fastapi.testclient import TestClient
     from main import app
-    from app.auth import AuthError
 
     mock_auth.side_effect = AuthError("Invalid license token")
     mock_get_db.return_value = MagicMock()
@@ -145,9 +146,10 @@ def test_usage_stats_invalid_token(mock_get_db, mock_auth):
 @patch("main.get_db")
 def test_usage_stats_valid(mock_get_db, mock_auth, mock_stats):
     """Test usage stats endpoint with valid token."""
+    from unittest.mock import MagicMock
+
     from fastapi.testclient import TestClient
     from main import app
-    from unittest.mock import MagicMock
 
     mock_user = MagicMock()
     mock_user.id = 1

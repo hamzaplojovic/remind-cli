@@ -1,14 +1,15 @@
 """Database models and initialization."""
 
+from collections.abc import Generator
 from datetime import datetime, timezone
-from typing import Generator, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON, ForeignKey, create_engine
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 if TYPE_CHECKING:
-    from app.config import Settings
+    pass
 
 Base = declarative_base()
 
@@ -86,10 +87,10 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     """Get database session (for dependency injection)."""
-    SessionLocal = get_session_local()
-    db = SessionLocal()
+    session_local = get_session_local()
+    db = session_local()
     try:
         yield db
     finally:

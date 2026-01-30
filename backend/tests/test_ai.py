@@ -1,8 +1,8 @@
 """Tests for AI suggestion module."""
 
-from unittest.mock import patch, MagicMock
-import pytest
+from unittest.mock import MagicMock, patch
 
+import pytest
 from app.ai import calculate_cost, suggest_reminder
 from app.models import PriorityLevel
 

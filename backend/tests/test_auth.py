@@ -1,20 +1,20 @@
 """Tests for authentication and authorization."""
 
-from datetime import datetime, timezone, timedelta
-import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from datetime import datetime, timedelta, timezone
 
-from app.database import Base, UserModel, RateLimitModel, UsageLogModel
+import pytest
 from app.auth import (
-    authenticate_token,
-    check_rate_limit,
-    check_ai_quota,
-    get_monthly_quota_used,
-    increment_rate_limit,
     AuthError,
     QuotaError,
+    authenticate_token,
+    check_ai_quota,
+    check_rate_limit,
+    get_monthly_quota_used,
+    increment_rate_limit,
 )
+from app.database import Base, UsageLogModel, UserModel
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture
@@ -22,8 +22,8 @@ def test_db():
     """Create in-memory test database."""
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(bind=engine)
-    SessionLocal = sessionmaker(bind=engine, autoflush=False)
-    db = SessionLocal()
+    session_local = sessionmaker(bind=engine, autoflush=False)
+    db = session_local()
     yield db
     db.close()
 

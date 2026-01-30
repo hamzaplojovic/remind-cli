@@ -1,11 +1,11 @@
 """Authentication and authorization logic."""
 
-from datetime import datetime, timezone, timedelta
-from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
+from datetime import datetime, timedelta, timezone
 
-from app.database import UserModel, RateLimitModel, UsageLogModel
-from app.models import PlanTier, PLAN_CONFIGS
+from app.database import RateLimitModel, UsageLogModel, UserModel
+from app.models import PLAN_CONFIGS, PlanTier
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 
 
 class AuthError(HTTPException):
