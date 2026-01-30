@@ -13,6 +13,7 @@ from remind.models import Config as ConfigModel
 from remind.models import PriorityLevel, Reminder
 from remind.premium import PremiumRequired, get_license_manager
 from remind.scheduler import Scheduler
+from remind.utils import parse_priority
 
 app = typer.Typer(help="Remind: AI-powered reminder CLI")
 
@@ -86,13 +87,19 @@ def add(
         )
 
     # Parse priority
-    priority_level = PriorityLevel.MEDIUM
     if priority:
-        try:
-            priority_level = PriorityLevel(priority.lower())
-        except ValueError:
-            typer.echo(f"Invalid priority: {priority}")
+        priority_level = parse_priority(priority)
+        if priority_level == PriorityLevel.MEDIUM and priority.lower() not in (
+            "medium",
+            "med",
+            "m",
+        ):
+            # Only error if input wasn't valid and didn't default to MEDIUM
+            valid_values = ", ".join([p.value for p in PriorityLevel])
+            typer.echo(f"Invalid priority: {priority}. Valid values: {valid_values}")
             raise typer.Exit(1)
+    else:
+        priority_level = PriorityLevel.MEDIUM
 
     # Check for AI rephrasing
     ai_suggested_text = None

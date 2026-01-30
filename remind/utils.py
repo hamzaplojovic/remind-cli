@@ -4,6 +4,8 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
+from remind.models import PriorityLevel
+
 
 def ensure_dir(path: Path) -> Path:
     """Create directory if it doesn't exist. Returns the path."""
@@ -62,3 +64,23 @@ def truncate_text(text: str, max_length: int = 100) -> str:
     if len(text) > max_length:
         return text[:max_length] + "..."
     return text
+
+
+def parse_priority(
+    priority_str: str,
+    default: PriorityLevel = PriorityLevel.MEDIUM,
+) -> PriorityLevel:
+    """
+    Parse a priority string into a PriorityLevel.
+
+    Args:
+        priority_str: Priority string ("high", "medium", "low")
+        default: Default priority if parsing fails
+
+    Returns:
+        PriorityLevel enum value
+    """
+    try:
+        return PriorityLevel(priority_str.lower())
+    except (ValueError, AttributeError):
+        return default

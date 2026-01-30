@@ -6,6 +6,7 @@ import httpx
 
 from remind.models import AIResponse, PriorityLevel
 from remind.premium import requires_premium
+from remind.utils import parse_priority
 
 
 class AIManager:
@@ -46,11 +47,8 @@ class AIManager:
             data = response.json()
 
             # Parse backend response
-            priority_str = data.get("priority", "medium").lower()
-            try:
-                priority = PriorityLevel(priority_str)
-            except ValueError:
-                priority = PriorityLevel.MEDIUM
+            priority_str = data.get("priority", "medium")
+            priority = parse_priority(priority_str)
 
             cost_cents = data.get("cost_cents", 0)
             cost_estimate = cost_cents / 100.0  # Convert cents to dollars

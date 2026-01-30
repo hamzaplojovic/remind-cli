@@ -36,13 +36,11 @@ class NotificationManager:
             try:
                 subprocess.run(
                     ["afplay", f"/System/Library/Sounds/{sound}.aiff"],
-                    timeout=2,
+                    timeout=10,
                     capture_output=True,
-                    check=True,
                 )
-            except subprocess.CalledProcessError as e:
-                # Log error but don't fail notification
-                print(f"Warning: Failed to play sound {sound}: {e}")
+            except subprocess.TimeoutExpired:
+                pass  # Sound playback timed out but that's OK
             except FileNotFoundError:
                 print(f"Warning: afplay not found on system")
             except Exception as e:
@@ -58,11 +56,15 @@ class NotificationManager:
             try:
                 subprocess.run(
                     ["paplay", f"/usr/share/sounds/freedesktop/stereo/{sound}.oga"],
-                    timeout=2,
+                    timeout=10,
                     capture_output=True,
                 )
-            except Exception:
-                pass  # Sound failed but notification still sent
+            except subprocess.TimeoutExpired:
+                pass  # Sound playback timed out but that's OK
+            except FileNotFoundError:
+                print(f"Warning: paplay not found on system")
+            except Exception as e:
+                print(f"Warning: Error playing sound: {e}")
 
     def notify(
         self,
