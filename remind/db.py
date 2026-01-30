@@ -145,19 +145,6 @@ class Database:
         finally:
             session.close()
 
-    def delete_reminder(self, reminder_id: int) -> bool:
-        """Delete a reminder permanently."""
-        session = self.SessionLocal()
-        try:
-            reminder = session.query(ReminderModel).filter_by(id=reminder_id).first()
-            if reminder:
-                session.delete(reminder)
-                session.commit()
-                return True
-            return False
-        finally:
-            session.close()
-
     def search_reminders(self, query: str) -> list[Reminder]:
         """Search reminders by text content."""
         session = self.SessionLocal()

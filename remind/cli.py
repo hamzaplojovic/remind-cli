@@ -259,57 +259,18 @@ def report() -> None:
 
 
 @app.command()
-def remove(reminder_id: int = typer.Argument(..., help="Reminder ID to remove")) -> None:
-    """Remove a reminder permanently."""
-    db = get_db()
-    reminder = db.get_reminder(reminder_id)
-
-    if not reminder:
-        typer.echo(f"✗ Reminder {reminder_id} not found")
-        raise typer.Exit(1)
-
-    # Confirm deletion
-    typer.echo(f"Delete reminder: {reminder.text}")
-    if typer.confirm("Are you sure?"):
-        db.delete_reminder(reminder_id)
-        typer.echo(f"✓ Reminder {reminder_id} removed")
-    else:
-        typer.echo("Cancelled.")
-
-
-@app.command()
-def scheduler(
-    install: bool = typer.Option(False, "--install", help="Install as background service"),
-    uninstall: bool = typer.Option(False, "--uninstall", help="Uninstall background service"),
-) -> None:
-    """Run background scheduler or manage service."""
-    if install:
-        typer.echo("Installing scheduler as background service...")
-        from remind.scheduler import Scheduler
-        s = Scheduler()
-        s.install_background_service()
-        typer.echo("✓ Scheduler installed. It will start on next login/boot.")
-        return
-
-    if uninstall:
-        typer.echo("Uninstall not yet implemented.")
-        return
-
-    # Run scheduler daemon
-    typer.echo("Starting scheduler daemon (Ctrl+C to stop)...")
-    from remind.scheduler import run_scheduler
-    run_scheduler()
-
-
-@app.command()
 def upgrade() -> None:
     """Upgrade Remind CLI to the latest version."""
     import subprocess
-    import sys
+    import os
+
+    repo_dir = os.path.expanduser("~/remind-cli")
+
+    if not os.path.exists(repo_dir):
+        typer.echo("✗ Remind CLI not found at ~/remind-cli", err=True)
+        raise typer.Exit(1)
 
     typer.echo("Upgrading Remind CLI...")
-
-    repo_dir = f"{typer.get_app_dir('remind')}/../remind-cli"
 
     try:
         # Pull latest changes
@@ -336,6 +297,79 @@ def upgrade() -> None:
     except Exception as e:
         typer.echo(f"✗ Error during upgrade: {e}", err=True)
         raise typer.Exit(1)
+
+
+@app.command()
+def remove() -> None:
+    """Uninstall Remind CLI from system."""
+    import subprocess
+    import os
+    import shutil
+
+    repo_dir = os.path.expanduser("~/remind-cli")
+    bin_file = os.path.expanduser("~/.local/bin/remind")
+    config_dir = os.path.expanduser("~/.remind")
+
+    typer.echo("This will uninstall Remind CLI from your system.")
+    typer.echo(f"  • Remove: {repo_dir}")
+    typer.echo(f"  • Remove: {bin_file}")
+    typer.echo(f"  • Keep: {config_dir} (your data)")
+
+    if not typer.confirm("Continue?"):
+        typer.echo("Cancelled.")
+        return
+
+    try:
+        # Stop scheduler if running
+        try:
+            subprocess.run(
+                ["systemctl", "--user", "stop", "remind-scheduler.service"],
+                capture_output=True,
+                timeout=5,
+            )
+        except Exception:
+            pass
+
+        # Remove global command
+        if os.path.exists(bin_file):
+            os.remove(bin_file)
+            typer.echo(f"✓ Removed {bin_file}")
+
+        # Remove repository
+        if os.path.exists(repo_dir):
+            shutil.rmtree(repo_dir)
+            typer.echo(f"✓ Removed {repo_dir}")
+
+        typer.echo("✓ Remind CLI uninstalled successfully")
+        typer.echo(f"💾 Your reminders are still saved in {config_dir}")
+
+    except Exception as e:
+        typer.echo(f"✗ Error during uninstall: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command()
+def scheduler(
+    install: bool = typer.Option(False, "--install", help="Install as background service"),
+    uninstall: bool = typer.Option(False, "--uninstall", help="Uninstall background service"),
+) -> None:
+    """Run background scheduler or manage service."""
+    if install:
+        typer.echo("Installing scheduler as background service...")
+        from remind.scheduler import Scheduler
+        s = Scheduler()
+        s.install_background_service()
+        typer.echo("✓ Scheduler installed. It will start on next login/boot.")
+        return
+
+    if uninstall:
+        typer.echo("Uninstall not yet implemented.")
+        return
+
+    # Run scheduler daemon
+    typer.echo("Starting scheduler daemon (Ctrl+C to stop)...")
+    from remind.scheduler import run_scheduler
+    run_scheduler()
 
 
 if __name__ == "__main__":
