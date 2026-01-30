@@ -18,6 +18,49 @@ from remind.utils import format_datetime, parse_priority
 app = typer.Typer(help="Remind: AI-powered reminder CLI")
 
 
+def ensure_scheduler_installed() -> None:
+    """Ensure scheduler is installed on first use (auto-setup on first reminder)."""
+    import os
+    import platform
+
+    system = platform.system()
+    scheduler_installed = False
+
+    if system == "Darwin":  # macOS
+        plist_path = os.path.expanduser(
+            "~/Library/LaunchAgents/com.remind.scheduler.plist"
+        )
+        scheduler_installed = os.path.exists(plist_path)
+    elif system == "Linux":
+        service_path = os.path.expanduser(
+            "~/.config/systemd/user/remind-scheduler.service"
+        )
+        scheduler_installed = os.path.exists(service_path)
+
+    # Auto-install on first use
+    if not scheduler_installed and system in ("Darwin", "Linux"):
+        try:
+            from remind.scheduler import Scheduler
+
+            typer.echo(
+                "ℹ️  Setting up background scheduler for the first time...",
+                err=True,
+            )
+            s = Scheduler()
+            s.install_background_service()
+            typer.echo(
+                "✓ Scheduler installed! Reminders will now run in the background.",
+                err=True,
+            )
+        except Exception as e:
+            # Don't fail if scheduler setup doesn't work - graceful degradation
+            typer.echo(
+                f"⚠️  Could not auto-install scheduler: {e}. "
+                "Run 'remind scheduler --install' manually.",
+                err=True,
+            )
+
+
 def display_reminder(
     reminder: Reminder,
     show_priority: bool = False,
@@ -69,6 +112,9 @@ def add(
     no_ai: bool = typer.Option(False, "--no-ai", help="Skip AI suggestions"),
 ) -> None:
     """Add a new reminder."""
+    # Ensure scheduler is running in background
+    ensure_scheduler_installed()
+
     db = get_db()
     config = load_config()
 
@@ -437,6 +483,137 @@ def scheduler(
     typer.echo("Starting scheduler daemon (Ctrl+C to stop)...")
     from remind.scheduler import run_scheduler
     run_scheduler()
+
+
+@app.command()
+def doctor() -> None:
+    """Diagnostic command: test all system components."""
+    import subprocess
+
+    typer.echo("\n🔍 Remind System Diagnostic\n")
+    typer.echo("=" * 50)
+
+    # Test 1: Database
+    typer.echo("\n1️⃣  Testing database...")
+    try:
+        db = get_db()
+        test_reminder = db.add_reminder(
+            text="[TEST] Doctor diagnostic - can be deleted",
+            due_at=datetime.now(timezone.utc),
+            priority=PriorityLevel.LOW,
+        )
+        typer.echo(f"   ✓ Database OK (created reminder ID {test_reminder.id})")
+
+        # Clean up test reminder
+        db.mark_done(test_reminder.id)
+        db.close()
+    except Exception as e:
+        typer.echo(f"   ✗ Database failed: {e}", err=True)
+        raise typer.Exit(1)
+
+    # Test 2: Notifications
+    typer.echo("\n2️⃣  Testing notifications...")
+    try:
+        from remind.notifications import NotificationManager
+
+        nm = NotificationManager()
+        if not nm.is_supported():
+            typer.echo("   ⚠️  Notifications not available (graceful degradation)")
+        else:
+            result = nm.notify_reminder_due("[TEST] Remind diagnostic notification")
+            if result:
+                typer.echo("   ✓ Notifications OK (check your system tray)")
+            else:
+                typer.echo("   ⚠️  Notifications may not work properly")
+    except Exception as e:
+        typer.echo(f"   ⚠️  Notifications warning: {e}")
+
+    # Test 3: Scheduler
+    typer.echo("\n3️⃣  Testing scheduler...")
+    try:
+        from remind.scheduler import Scheduler
+
+        scheduler = Scheduler()
+        if scheduler.notifications:
+            typer.echo("   ✓ Scheduler OK (notifications available)")
+        else:
+            typer.echo("   ✓ Scheduler OK (notifications unavailable but scheduler works)")
+    except Exception as e:
+        typer.echo(f"   ✗ Scheduler failed: {e}", err=True)
+
+    # Test 4: Background Service
+    typer.echo("\n4️⃣  Checking background service...")
+    try:
+        import platform
+        import os
+
+        system = platform.system()
+        if system == "Darwin":  # macOS
+            plist_path = os.path.expanduser(
+                "~/Library/LaunchAgents/com.remind.scheduler.plist"
+            )
+            if os.path.exists(plist_path):
+                typer.echo("   ✓ Background service installed (macOS LaunchAgent)")
+            else:
+                typer.echo(
+                    "   ⚠️  Background service NOT installed. Run: remind scheduler --install"
+                )
+        elif system == "Linux":
+            service_path = os.path.expanduser(
+                "~/.config/systemd/user/remind-scheduler.service"
+            )
+            if os.path.exists(service_path):
+                # Check if running
+                try:
+                    result = subprocess.run(
+                        ["systemctl", "--user", "is-active", "remind-scheduler.service"],
+                        capture_output=True,
+                        timeout=5,
+                    )
+                    if result.returncode == 0:
+                        typer.echo("   ✓ Background service installed and RUNNING (systemd)")
+                    else:
+                        typer.echo(
+                            "   ⚠️  Background service installed but NOT RUNNING. "
+                            "Start it: systemctl --user start remind-scheduler.service"
+                        )
+                except Exception:
+                    typer.echo(
+                        "   ⚠️  Background service installed (systemd) but status unknown"
+                    )
+            else:
+                typer.echo(
+                    "   ⚠️  Background service NOT installed. Run: remind scheduler --install"
+                )
+        else:
+            typer.echo(f"   ℹ️  Unknown platform: {system}")
+    except Exception as e:
+        typer.echo(f"   ⚠️  Could not check background service: {e}")
+
+    # Test 5: Configuration
+    typer.echo("\n5️⃣  Checking configuration...")
+    try:
+        config = load_config()
+        typer.echo(f"   ✓ Configuration loaded")
+        typer.echo(f"     - Scheduler interval: {config.scheduler_interval_minutes}m")
+        typer.echo(
+            f"     - Notifications: {'enabled' if config.notifications_enabled else 'disabled'}"
+        )
+        typer.echo(
+            f"     - AI suggestions: {'enabled' if config.ai_rephrasing_enabled else 'disabled'}"
+        )
+    except Exception as e:
+        typer.echo(f"   ✗ Configuration error: {e}", err=True)
+
+    # Summary
+    typer.echo("\n" + "=" * 50)
+    typer.echo(
+        "\n✓ System diagnostic complete!\n"
+        "💡 Tips:\n"
+        "   • To install the background scheduler: remind scheduler --install\n"
+        "   • To test it's working: remind add 'test' --due 'now'\n"
+        "   • To view settings: remind settings --show\n"
+    )
 
 
 if __name__ == "__main__":

@@ -4,6 +4,9 @@ import platform
 import subprocess
 from typing import Callable, Optional
 
+from remind.platform_capabilities import PlatformCapabilities
+from remind.platform_utils import get_platform
+
 try:
     from notifypy import Notify
 except ImportError:
@@ -11,22 +14,66 @@ except ImportError:
 
 
 class NotificationManager:
-    """Unified notification interface across platforms."""
+    """Unified notification interface across platforms.
 
-    def __init__(self, app_name: str = "Remind"):
-        """Initialize notification manager."""
+    Provides graceful degradation:
+    - If notify-py unavailable: prints to console
+    - If sound player unavailable: sends notification without sound
+    """
+
+    def __init__(self, app_name: str = "Remind", strict: bool = False):
+        """Initialize notification manager.
+
+        Args:
+            app_name: Application name for notifications
+            strict: If True, raise error if notify-py unavailable.
+                   If False, gracefully degrade to console output.
+
+        Raises:
+            ImportError: If strict=True and notify-py not available
+        """
         self.app_name = app_name
-        self.platform = platform.system()
+        self.platform_info = get_platform()
+        self.notifications_available = Notify is not None
+        self.sound_available = PlatformCapabilities.test_sound_player(
+            self.platform_info.get_sound_player()
+        )
 
-        if Notify is None:
+        if not self.notifications_available and strict:
             raise ImportError(
                 "notify-py not installed. Install with: pip install notify-py"
             )
 
+    def is_available(self) -> bool:
+        """Check if notifications can be sent.
+
+        Returns:
+            True if notify-py is available
+        """
+        return self.notifications_available
+
+    def is_sound_available(self) -> bool:
+        """Check if sound playback is available.
+
+        Returns:
+            True if sound player is available
+        """
+        return self.sound_available
+
     def _play_sound(self, urgency: str = "normal") -> None:
-        """Play an annoying alert sound based on urgency."""
-        if self.platform == "Darwin":  # macOS
-            # Use system alert sounds
+        """Play an annoying alert sound based on urgency.
+
+        Sound playback is best-effort - if the player is unavailable or
+        playback fails, the notification is still sent without sound.
+
+        Args:
+            urgency: Sound urgency level ("low", "normal", "critical")
+        """
+        if not self.sound_available:
+            return  # Sound player not available, skip silently
+
+        if self.platform_info.is_macos:
+            # Use system alert sounds on macOS
             sounds = {
                 "critical": "Glass",  # Very annoying
                 "normal": "Ping",     # Medium annoying
@@ -40,13 +87,14 @@ class NotificationManager:
                     capture_output=True,
                 )
             except subprocess.TimeoutExpired:
-                pass  # Sound playback timed out but that's OK
+                pass  # Sound playback timed out but notification sent
             except FileNotFoundError:
-                print(f"Warning: afplay not found on system")
-            except Exception as e:
-                print(f"Warning: Error playing sound: {e}")
-        elif self.platform == "Linux":
-            # Use system sounds on Linux
+                pass  # afplay not found, skip silently
+            except Exception:
+                pass  # Other errors, skip silently
+
+        elif self.platform_info.is_linux:
+            # Use freedesktop system sounds on Linux
             sounds = {
                 "critical": "alarm-clock-elapsed",
                 "normal": "dialog-warning",
@@ -60,11 +108,11 @@ class NotificationManager:
                     capture_output=True,
                 )
             except subprocess.TimeoutExpired:
-                pass  # Sound playback timed out but that's OK
+                pass  # Sound playback timed out but notification sent
             except FileNotFoundError:
-                print(f"Warning: paplay not found on system")
-            except Exception as e:
-                print(f"Warning: Error playing sound: {e}")
+                pass  # paplay not found, skip silently
+            except Exception:
+                pass  # Other errors, skip silently
 
     def notify(
         self,
@@ -74,8 +122,7 @@ class NotificationManager:
         callback: Optional[Callable[[], None]] = None,
         sound: bool = False,
     ) -> bool:
-        """
-        Send a native desktop notification.
+        """Send a native desktop notification.
 
         Args:
             title: Notification title
@@ -85,13 +132,19 @@ class NotificationManager:
             sound: Whether to play an annoying alert sound
 
         Returns:
-            True if notification sent successfully, False otherwise
+            True if notification sent successfully, False otherwise.
+            Returns False if notifications unavailable (graceful degradation).
         """
-        try:
-            # Play sound first if enabled
-            if sound:
-                self._play_sound(urgency)
+        # Play sound first if enabled and available
+        if sound:
+            self._play_sound(urgency)
 
+        # If notifications not available, print to console and return False
+        if not self.notifications_available:
+            print(f"[{title}] {message}")
+            return False
+
+        try:
             notification = Notify()
             notification.title = title
             notification.message = message
@@ -106,7 +159,8 @@ class NotificationManager:
             notification.send()
             return True
         except Exception as e:
-            print(f"Error sending notification: {e}")
+            # Log error but don't fail - notification was attempted
+            print(f"Warning: Error sending notification: {e}")
             return False
 
     def notify_reminder_due(

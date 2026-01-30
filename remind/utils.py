@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from remind.models import PriorityLevel
+from remind.platform_utils import get_platform
 
 
 def ensure_dir(path: Path) -> Path:
@@ -15,13 +16,22 @@ def ensure_dir(path: Path) -> Path:
 
 
 def get_app_dir() -> Path:
-    """Get the Remind application directory (~/.remind)."""
-    return ensure_dir(Path.home() / ".remind")
+    """Get the Remind application directory (platform-specific).
+
+    Returns platform-specific app data directory:
+    - macOS: ~/Library/Application Support/Remind
+    - Linux: ~/.local/share/remind
+    - Windows: %APPDATA%\\Remind
+    """
+    return get_platform().get_app_data_dir()
 
 
 def get_logs_dir() -> Path:
-    """Get the Remind logs directory (~/.remind/logs)."""
-    return ensure_dir(get_app_dir() / "logs")
+    """Get the Remind logs directory (platform-specific).
+
+    Returns platform-specific logs directory.
+    """
+    return get_platform().get_logs_dir()
 
 
 def run_command(

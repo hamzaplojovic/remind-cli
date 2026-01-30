@@ -1,6 +1,5 @@
 """Background scheduler for Remind."""
 
-import platform
 import signal
 import subprocess
 import sys
@@ -13,8 +12,10 @@ from remind.config import load_config
 from remind.db import Database
 from remind.models import Reminder
 from remind.notifications import NotificationManager
+from remind.platform_capabilities import PlatformCapabilities
+from remind.platform_utils import get_platform
 from remind.premium import get_license_manager
-from remind.utils import ensure_dir, get_app_dir, get_logs_dir, run_command
+from remind.utils import ensure_dir, get_logs_dir, run_command
 
 
 class SchedulerState:
@@ -75,12 +76,12 @@ class Scheduler:
         self.state = SchedulerState()
         self.running = False
 
-        # Try to initialize notifications
-        try:
-            self.notifications = NotificationManager()
-        except ImportError:
-            print("Warning: Notifications not available")
-            self.notifications = None  # type: ignore
+        # Initialize notifications (graceful degradation if unavailable)
+        self.notifications = NotificationManager(strict=False)
+        if not self.notifications.is_available():
+            print("Warning: Notifications not available (will print to console)")
+        if not self.notifications.is_sound_available():
+            print("Warning: Sound playback not available")
 
     def start(self) -> None:
         """Start the scheduler daemon."""
@@ -169,15 +170,26 @@ class Scheduler:
             print(f"Error sending nudge: {e}")
 
     def install_background_service(self) -> None:
-        """Install scheduler as a background service."""
-        system = platform.system()
+        """Install scheduler as a background service.
 
-        if system == "Darwin":
+        Checks for platform support and required tools before installing.
+        """
+        platform_info = get_platform()
+
+        if platform_info.is_macos:
+            if not PlatformCapabilities.test_launchctl():
+                print("Error: launchctl not found. Cannot install scheduler on macOS.")
+                return
             self._install_macos_agent()
-        elif system == "Linux":
+        elif platform_info.is_linux:
+            if not PlatformCapabilities.test_systemd():
+                print("Error: systemd not found. Cannot install scheduler on Linux.")
+                print("Note: Daemon mode requires systemd (present on all modern distributions).")
+                return
             self._install_linux_service()
         else:
-            print(f"Unsupported platform: {system}")
+            print(f"⚠️  Unsupported platform: {platform_info.system}")
+            print("Daemon mode is not supported on your system.")
 
     def _install_macos_agent(self) -> None:
         """Install macOS launchd agent."""

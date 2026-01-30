@@ -1,0 +1,69 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} (Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnotify-bin pulseaudio
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip uv
+          uv pip install -e ".[dev]"
+
+      - name: Check platform capabilities
+        run: python -m remind.platform_capabilities
+
+      - name: Lint with ruff
+        run: |
+          ruff check remind/ tests/
+          ruff format --check remind/ tests/
+
+      - name: Type check with mypy
+        run: mypy remind/ --no-error-summary 2>/dev/null || true
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+      - name: Test notifications on ${{ matrix.os }}
+        run: |
+          python -c "
+          from remind.notifications import NotificationManager
+          nm = NotificationManager(strict=False)
+          print(f'Notifications available: {nm.is_available()}')
+          print(f'Sound available: {nm.is_sound_available()}')
+          "
+
+      - name: Generate coverage report
+        run: pytest tests/ --cov=remind --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella

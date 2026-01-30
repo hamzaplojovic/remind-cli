@@ -8,7 +8,12 @@ from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from remind.models import Config as ConfigModel
-from remind.utils import get_app_dir as _get_app_dir
+from remind.platform_utils import (
+    get_app_dir,
+    get_config_path as _get_config_path,
+    get_db_path as _get_db_path,
+    get_license_path as _get_license_path,
+)
 
 
 class Settings(BaseSettings):
@@ -30,24 +35,19 @@ class Settings(BaseSettings):
     )
 
 
-def get_app_dir() -> Path:
-    """Get the application directory, creating it if necessary."""
-    return _get_app_dir()
-
-
 def get_db_path() -> Path:
-    """Get the database path."""
-    return get_app_dir() / "reminders.db"
+    """Get the database path (platform-specific)."""
+    return _get_db_path()
 
 
 def get_license_path() -> Path:
-    """Get the license token file path."""
-    return get_app_dir() / "license.json"
+    """Get the license token file path (platform-specific)."""
+    return _get_license_path()
 
 
 def get_config_path() -> Path:
-    """Get the config file path."""
-    return get_app_dir() / "config.toml"
+    """Get the config file path (platform-specific)."""
+    return _get_config_path()
 
 
 def load_config() -> ConfigModel:
