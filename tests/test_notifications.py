@@ -73,10 +73,14 @@ def test_notification_error_handling(mock_notify_class):
     mock_notify_class.return_value = mock_notify
 
     manager = NotificationManager()
-    result = manager.notify(
-        title="Test",
-        message="Test",
-    )
 
-    # Should return False on error
+    # Mock subprocess.run to fail for the osascript fallback
+    with patch("remind.notifications.subprocess.run") as mock_subprocess:
+        mock_subprocess.side_effect = Exception("osascript failed")
+        result = manager.notify(
+            title="Test",
+            message="Test",
+        )
+
+    # Should return False on error (both notify-py and osascript fallback fail)
     assert result is False
