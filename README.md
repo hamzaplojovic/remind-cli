@@ -50,14 +50,41 @@ remind settings --show
 
 ## Installation
 
-### macOS
+### macOS (Homebrew)
 ```bash
+brew tap hamzaplojovic/remember
 brew install remind
 ```
 
-### Linux & Manual
+### Linux & macOS (Universal Installer)
 ```bash
-curl -fsSL https://install.remind.dev | bash
+curl -fsSL https://raw.githubusercontent.com/hamzaplojovic/remember/main/build_tools/install.sh | bash
+```
+
+The installer will:
+- ✓ Detect your OS and architecture
+- ✓ Download the latest binary from GitHub releases
+- ✓ Verify SHA256 checksums
+- ✓ Install to `~/.local/bin`
+- ✓ Update your shell PATH automatically
+
+Specify a version:
+```bash
+curl -fsSL https://raw.githubusercontent.com/hamzaplojovic/remember/main/build_tools/install.sh | bash -s v0.1.0
+```
+
+### Ubuntu / Debian
+```bash
+# Install the latest version
+sudo apt install remind
+
+# Or with specific version
+sudo apt install remind=0.1.0
+```
+
+After installation, reload your shell:
+```bash
+source ~/.bashrc  # or ~/.zshrc
 ```
 
 ### From Source
@@ -68,6 +95,24 @@ python -m venv venv
 source venv/bin/activate
 pip install -e .
 remind --help
+```
+
+## Uninstall
+
+**Homebrew:**
+```bash
+brew uninstall remind
+brew untap hamzaplojovic/remember
+```
+
+**Curl Installer:**
+```bash
+rm ~/.local/bin/remind
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt remove remind
 ```
 
 ## Architecture
