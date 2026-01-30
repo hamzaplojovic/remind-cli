@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Change to home directory to avoid "current directory deleted" issues
+cd ~ || exit 1
+
 echo "🚀 Installing Remind CLI..."
 
 # Detect OS and install Python 3.13 + uv if needed
