@@ -1,12 +1,12 @@
 #!/bin/bash
 # Remind CLI - Production-Grade Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/hamzaplojovic/remember/main/build_tools/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/hamzaplojovic/remind-cli/master/build_tools/install.sh | bash
 # Or: bash install.sh [VERSION]
 
 set -e
 
 # Configuration
-REPO="hamzaplojovic/remember"
+REPO="hamzaplojovic/remind-cli"
 INSTALL_DIR="${HOME}/.local/bin"
 VERSION="${1:-latest}"
 GITHUB_API="https://api.github.com/repos/${REPO}/releases"

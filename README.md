@@ -52,13 +52,13 @@ remind settings --show
 
 ### macOS (Homebrew)
 ```bash
-brew tap hamzaplojovic/remember
+brew tap hamzaplojovic/remind-cli
 brew install remind
 ```
 
 ### Linux & macOS (Universal Installer)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hamzaplojovic/remember/main/build_tools/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/hamzaplojovic/remind-cli/master/build_tools/install.sh | bash
 ```
 
 The installer will:
@@ -70,7 +70,7 @@ The installer will:
 
 Specify a version:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hamzaplojovic/remember/main/build_tools/install.sh | bash -s v0.1.0
+curl -fsSL https://raw.githubusercontent.com/hamzaplojovic/remind-cli/master/build_tools/install.sh | bash -s v0.2.0
 ```
 
 ### Ubuntu / Debian
