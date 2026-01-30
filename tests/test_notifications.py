@@ -14,7 +14,7 @@ def test_notification_manager_init(mock_notify_class):
 
     manager = NotificationManager()
     assert manager.app_name == "Remind"
-    assert manager.platform in ["Darwin", "Linux", "Windows"]
+    assert manager.platform_info.system in ["Darwin", "Linux", "Windows"]
 
 
 @patch("remind.notifications.Notify")

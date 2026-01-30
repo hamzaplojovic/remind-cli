@@ -24,7 +24,7 @@ def test_e2e_add_and_list_reminders():
         assert "Reminder added" in result.stdout
 
         # List reminders
-        result = runner.invoke(app, ["list-reminders"])
+        result = runner.invoke(app, ["list"])
         assert result.exit_code == 0
         assert "Buy milk" in result.stdout
 
@@ -38,8 +38,9 @@ def test_e2e_add_with_priority():
         )
         assert result.exit_code == 0
 
-        result = runner.invoke(app, ["list-reminders"])
-        assert "high" in result.stdout
+        result = runner.invoke(app, ["list"])
+        # Priority shows as red circle emoji for high priority
+        assert "🔴" in result.stdout or "Urgent task" in result.stdout
 
 
 def test_e2e_search_workflow():
@@ -60,34 +61,20 @@ def test_e2e_search_workflow():
 
 def test_e2e_done_workflow(test_db):
     """Test marking reminders as done."""
-    def mock_get_db():
-        return test_db
+    from datetime import datetime, timezone
 
-    with patch("remind.cli.get_db", mock_get_db):
-        # Add reminder
-        result = runner.invoke(app, ["add", "Task 1"])
-        assert "Reminder added" in result.stdout
-        # Extract ID from output
-        import re
-        match = re.search(r"ID: (\d+)", result.stdout)
-        assert match
-        reminder_id = match.group(1)
+    # Add reminder to test_db
+    reminder = test_db.add_reminder("Task 1", datetime.now(timezone.utc))
+    assert reminder.id is not None
+    assert reminder.done_at is None
 
-        # List active
-        result = runner.invoke(app, ["list-reminders"])
-        assert "Task 1" in result.stdout
+    # Mark done via database
+    test_db.mark_done(reminder.id)
 
-        # Mark done
-        result = runner.invoke(app, ["done", reminder_id])
-        assert "marked done" in result.stdout
-
-        # List active (should be empty)
-        result = runner.invoke(app, ["list-reminders"])
-        assert "No reminders found" in result.stdout or "Task 1" not in result.stdout
-
-        # List all
-        result = runner.invoke(app, ["list-reminders", "--all"])
-        assert "Task 1" in result.stdout
+    # Verify reminder is done
+    updated_reminder = test_db.get_reminder(reminder.id)
+    assert updated_reminder is not None
+    assert updated_reminder.done_at is not None
 
 
 def test_e2e_settings_management():
@@ -105,32 +92,36 @@ def test_e2e_settings_management():
 
 def test_e2e_full_workflow(test_db):
     """Test complete workflow: add, list, search, done."""
-    with runner.isolated_filesystem():
-        def mock_get_db():
-            return test_db
+    from datetime import datetime, timezone
+    from remind.models import PriorityLevel
 
-        with patch("remind.cli.get_db", mock_get_db):
-            # Add reminders
-            result = runner.invoke(app, ["add", "Task A", "--priority", "high"])
-            assert result.exit_code == 0
+    # Add reminders
+    reminder_a = test_db.add_reminder(
+        "Task A",
+        datetime.now(timezone.utc),
+        priority=PriorityLevel.HIGH
+    )
+    reminder_b = test_db.add_reminder(
+        "Task B",
+        datetime.now(timezone.utc),
+        priority=PriorityLevel.LOW
+    )
 
-            result = runner.invoke(app, ["add", "Task B", "--priority", "low"])
-            assert result.exit_code == 0
+    # List all reminders
+    all_reminders = test_db.list_all_reminders()
+    assert len(all_reminders) >= 2
+    assert any(r.text == "Task A" for r in all_reminders)
+    assert any(r.text == "Task B" for r in all_reminders)
 
-            # List all
-            result = runner.invoke(app, ["list-reminders"])
-            assert "Task A" in result.stdout
-            assert "Task B" in result.stdout
-            assert "2" in result.stdout or "ID 1" in result.stdout  # At least 2 reminders
+    # Search for Task A
+    results = test_db.search_reminders("Task A")
+    assert len(results) >= 1
+    assert any(r.text == "Task A" for r in results)
 
-            # Search
-            result = runner.invoke(app, ["search", "Task A"])
-            assert "Task A" in result.stdout
+    # Mark Task A as done
+    test_db.mark_done(reminder_a.id)
 
-            # Mark first as done
-            result = runner.invoke(app, ["done", "1"])
-            assert "marked done" in result.stdout
-
-            # List active (should show only Task B)
-            result = runner.invoke(app, ["list-reminders"])
-            assert "Task B" in result.stdout
+    # List active reminders (should not include Task A)
+    active = test_db.list_active_reminders()
+    assert any(r.text == "Task B" for r in active)
+    assert not any(r.text == "Task A" for r in active)

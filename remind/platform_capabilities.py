@@ -215,3 +215,13 @@ def check_critical_capabilities() -> list[str]:
         )
 
     return warnings
+
+
+if __name__ == "__main__":
+    """Run capability checks when invoked as a module."""
+    PlatformCapabilities.print_report()
+    warnings = check_critical_capabilities()
+    if warnings:
+        print()
+        for warning in warnings:
+            print(warning)

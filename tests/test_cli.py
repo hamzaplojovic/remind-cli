@@ -34,7 +34,7 @@ def test_list_command(test_db, monkeypatch):
     from datetime import datetime, timezone
     test_db.add_reminder("Test task", datetime.now(timezone.utc))
 
-    result = runner.invoke(app, ["list-reminders"])
+    result = runner.invoke(app, ["list"])
     assert result.exit_code == 0
     assert "Test task" in result.stdout
 
