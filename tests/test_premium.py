@@ -1,10 +1,9 @@
 """Tests for premium features."""
 
-from pathlib import Path
-from datetime import datetime
+
+import pytest
 
 from remind.premium import LicenseManager, PremiumRequired
-import pytest
 
 
 def test_license_manager_no_license(tmp_path):

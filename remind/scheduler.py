@@ -4,9 +4,8 @@ import signal
 import subprocess
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from remind.config import load_config
 from remind.db import Database
@@ -68,7 +67,7 @@ class SchedulerState:
 class Scheduler:
     """Background scheduler for sending reminders."""
 
-    def __init__(self, db: Optional[Database] = None):
+    def __init__(self, db: Database | None = None):
         """Initialize scheduler."""
         self.db = db or Database()
         self.config = load_config()

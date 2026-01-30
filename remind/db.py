@@ -1,12 +1,12 @@
 """Database operations for Remind."""
 
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Generator, Optional
 
 from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from remind.config import get_db_path
@@ -46,7 +46,7 @@ class ReminderModel(Base):
 class Database:
     """Database manager for Remind."""
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         """Initialize database connection."""
         if db_path is None:
             db_path = get_db_path()
@@ -74,7 +74,7 @@ class Database:
         pass
 
     @contextmanager
-    def get_session(self) -> Generator[Session, None, None]:
+    def get_session(self) -> Generator[Session]:
         """Context manager for database sessions - ensures proper cleanup."""
         session = self.SessionLocal()
         try:
@@ -87,8 +87,8 @@ class Database:
         text: str,
         due_at: datetime,
         priority: PriorityLevel = PriorityLevel.MEDIUM,
-        project_context: Optional[str] = None,
-        ai_suggested_text: Optional[str] = None,
+        project_context: str | None = None,
+        ai_suggested_text: str | None = None,
     ) -> Reminder:
         """Add a new reminder to the database."""
         with self.get_session() as session:
@@ -104,7 +104,7 @@ class Database:
             session.refresh(reminder)
             return reminder.to_pydantic()
 
-    def get_reminder(self, reminder_id: int) -> Optional[Reminder]:
+    def get_reminder(self, reminder_id: int) -> Reminder | None:
         """Get a single reminder by ID."""
         with self.get_session() as session:
             reminder = session.query(ReminderModel).filter_by(id=reminder_id).first()
@@ -129,7 +129,7 @@ class Database:
             )
             return [r.to_pydantic() for r in reminders]
 
-    def mark_done(self, reminder_id: int) -> Optional[Reminder]:
+    def mark_done(self, reminder_id: int) -> Reminder | None:
         """Mark a reminder as done (soft delete)."""
         with self.get_session() as session:
             reminder = session.query(ReminderModel).filter_by(id=reminder_id).first()

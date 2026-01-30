@@ -2,10 +2,10 @@
 
 from datetime import datetime, timezone
 
+import pytest
 from pydantic import ValidationError
 
 from remind.models import Config, PriorityLevel, Reminder
-import pytest
 
 
 def test_priority_level_enum():

@@ -3,7 +3,6 @@
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from remind.models import PriorityLevel
 from remind.platform_utils import get_platform
@@ -37,8 +36,8 @@ def get_logs_dir() -> Path:
 def run_command(
     cmd: list[str],
     check: bool = True,
-    timeout: Optional[int] = None,
-    cwd: Optional[str] = None,
+    timeout: int | None = None,
+    cwd: str | None = None,
 ) -> subprocess.CompletedProcess:
     """
     Run a shell command with standard options.
@@ -130,7 +129,7 @@ def format_datetime(dt: datetime) -> str:
     if dt < now:
         days_ago = (now - dt).days
         if days_ago == 0:
-            return f"overdue (today)"
+            return "overdue (today)"
         return f"overdue by {days_ago} day{'s' if days_ago > 1 else ''}"
 
     # Future dates

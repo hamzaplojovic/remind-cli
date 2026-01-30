@@ -51,8 +51,8 @@ def skip_if_no_notifications():
 @pytest.fixture
 def skip_if_no_sound():
     """Skip test if sound playback not available."""
-    from remind.platform_utils import get_platform
     from remind.platform_capabilities import PlatformCapabilities
+    from remind.platform_utils import get_platform
 
     platform_info = get_platform()
     if not PlatformCapabilities.test_sound_player(platform_info.get_sound_player()):

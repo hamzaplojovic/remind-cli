@@ -1,13 +1,10 @@
 """End-to-end integration tests for Remind."""
 
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from datetime import datetime, timezone
 
 from typer.testing import CliRunner
 
 from remind.cli import app
-from remind.db import Database
 
 runner = CliRunner()
 
@@ -61,7 +58,6 @@ def test_e2e_search_workflow():
 
 def test_e2e_done_workflow(test_db):
     """Test marking reminders as done."""
-    from datetime import datetime, timezone
 
     # Add reminder to test_db
     reminder = test_db.add_reminder("Task 1", datetime.now(timezone.utc))
@@ -92,7 +88,6 @@ def test_e2e_settings_management():
 
 def test_e2e_full_workflow(test_db):
     """Test complete workflow: add, list, search, done."""
-    from datetime import datetime, timezone
     from remind.models import PriorityLevel
 
     # Add reminders
@@ -101,7 +96,7 @@ def test_e2e_full_workflow(test_db):
         datetime.now(timezone.utc),
         priority=PriorityLevel.HIGH
     )
-    reminder_b = test_db.add_reminder(
+    test_db.add_reminder(
         "Task B",
         datetime.now(timezone.utc),
         priority=PriorityLevel.LOW

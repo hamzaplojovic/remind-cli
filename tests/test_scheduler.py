@@ -3,7 +3,6 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
-from remind.db import Database
 from remind.scheduler import Scheduler
 
 

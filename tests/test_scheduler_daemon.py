@@ -2,11 +2,10 @@
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from remind.db import Database
 from remind.scheduler import Scheduler
 
 
@@ -51,7 +50,6 @@ def test_scheduler_tracks_nudge_state():
 @patch("remind.scheduler.subprocess.run")
 def test_install_macos_agent(mock_subprocess, tmp_path):
     """Test macOS LaunchAgent installation."""
-    import os
 
     with patch("sys.argv", ["/usr/local/bin/remind"]):
         with patch.object(Path, "home", return_value=tmp_path):

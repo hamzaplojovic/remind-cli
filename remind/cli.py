@@ -1,7 +1,6 @@
 """CLI interface for Remind."""
 
 from datetime import datetime, timezone
-from typing import Optional
 
 import typer
 from dateparser import parse as dateparser_parse
@@ -9,10 +8,8 @@ from dateparser import parse as dateparser_parse
 from remind.ai import get_ai_manager
 from remind.config import load_config, save_config
 from remind.db import Database
-from remind.models import Config as ConfigModel
 from remind.models import PriorityLevel, Reminder
 from remind.premium import PremiumRequired, get_license_manager
-from remind.scheduler import Scheduler
 from remind.utils import format_datetime, parse_priority
 
 app = typer.Typer(help="Remind: AI-powered reminder CLI")
@@ -88,7 +85,7 @@ def get_db() -> Database:
     return Database()
 
 
-def parse_datetime(text: str) -> Optional[datetime]:
+def parse_datetime(text: str) -> datetime | None:
     """Parse natural language datetime string."""
     parsed = dateparser_parse(text, settings={"RETURN_AS_TIMEZONE_AWARE": True})
     if parsed:
@@ -100,13 +97,13 @@ def parse_datetime(text: str) -> Optional[datetime]:
 @app.command()
 def add(
     text: str = typer.Argument(..., help="Reminder text"),
-    due: Optional[str] = typer.Option(
+    due: str | None = typer.Option(
         None, "--due", "-d", help="Due time (natural language, e.g., 'tomorrow 3pm')"
     ),
-    priority: Optional[str] = typer.Option(
+    priority: str | None = typer.Option(
         None, "--priority", "-p", help="Priority level: high, medium, low"
     ),
-    project: Optional[str] = typer.Option(
+    project: str | None = typer.Option(
         None, "--project", "-c", help="Project context"
     ),
     no_ai: bool = typer.Option(False, "--no-ai", help="Skip AI suggestions"),
@@ -205,7 +202,7 @@ def add(
 @app.command()
 def list(
     all: bool = typer.Option(False, "--all", "-a", help="Show all reminders including done"),
-    project: Optional[str] = typer.Option(
+    project: str | None = typer.Option(
         None, "--project", "-c", help="Filter by project"
     ),
 ) -> None:
@@ -302,17 +299,17 @@ def search(query: str = typer.Argument(..., help="Search query")) -> None:
 
 @app.command()
 def settings(
-    timezone: Optional[str] = typer.Option(None, "--timezone", help="Set timezone"),
-    interval: Optional[int] = typer.Option(
+    timezone: str | None = typer.Option(None, "--timezone", help="Set timezone"),
+    interval: int | None = typer.Option(
         None, "--interval", help="Scheduler check interval in minutes"
     ),
-    ai_enabled: Optional[bool] = typer.Option(
+    ai_enabled: bool | None = typer.Option(
         None, "--ai/--no-ai", help="Enable/disable AI suggestions"
     ),
-    sound_enabled: Optional[bool] = typer.Option(
+    sound_enabled: bool | None = typer.Option(
         None, "--sound/--no-sound", help="Enable/disable notification sounds"
     ),
-    api_key: Optional[str] = typer.Option(None, "--api-key", help="OpenAI API key"),
+    api_key: str | None = typer.Option(None, "--api-key", help="OpenAI API key"),
     show: bool = typer.Option(False, "--show", help="Show current settings"),
 ) -> None:
     """Manage settings."""
@@ -374,8 +371,8 @@ def report() -> None:
 @app.command()
 def upgrade() -> None:
     """Upgrade Remind CLI to the latest version."""
-    import subprocess
     import os
+    import subprocess
 
     repo_dir = os.path.expanduser("~/remind-cli")
 
@@ -415,9 +412,9 @@ def upgrade() -> None:
 @app.command()
 def remove() -> None:
     """Uninstall Remind CLI from system."""
-    import subprocess
     import os
     import shutil
+    import subprocess
 
     repo_dir = os.path.expanduser("~/remind-cli")
     bin_file = os.path.expanduser("~/.local/bin/remind")
@@ -544,8 +541,8 @@ def doctor() -> None:
     # Test 4: Background Service
     typer.echo("\n4️⃣  Checking background service...")
     try:
-        import platform
         import os
+        import platform
 
         system = platform.system()
         if system == "Darwin":  # macOS
@@ -594,7 +591,7 @@ def doctor() -> None:
     typer.echo("\n5️⃣  Checking configuration...")
     try:
         config = load_config()
-        typer.echo(f"   ✓ Configuration loaded")
+        typer.echo("   ✓ Configuration loaded")
         typer.echo(f"     - Scheduler interval: {config.scheduler_interval_minutes}m")
         typer.echo(
             f"     - Notifications: {'enabled' if config.notifications_enabled else 'disabled'}"

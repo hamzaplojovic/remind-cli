@@ -1,8 +1,7 @@
 """Notification system for Remind."""
 
-import platform
 import subprocess
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from remind.platform_capabilities import PlatformCapabilities
 from remind.platform_utils import get_platform
@@ -119,7 +118,7 @@ class NotificationManager:
         title: str,
         message: str,
         urgency: str = "normal",
-        callback: Optional[Callable[[], None]] = None,
+        callback: Callable[[], None] | None = None,
         sound: bool = False,
     ) -> bool:
         """Send a native desktop notification.
@@ -164,7 +163,7 @@ class NotificationManager:
             return False
 
     def notify_reminder_due(
-        self, reminder_text: str, sound: bool = False, callback: Optional[Callable] = None
+        self, reminder_text: str, sound: bool = False, callback: Callable | None = None
     ) -> bool:
         """Send a notification for a due reminder."""
         title = "Reminder"

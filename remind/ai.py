@@ -1,10 +1,9 @@
 """AI-powered features for Remind via backend API."""
 
-from typing import Optional
 
 import httpx
 
-from remind.models import AIResponse, PriorityLevel
+from remind.models import AIResponse
 from remind.premium import requires_premium
 from remind.utils import parse_priority
 
@@ -71,8 +70,8 @@ class AIManager:
 
 
 def get_ai_manager(
-    backend_url: Optional[str] = None, license_token: Optional[str] = None
-) -> Optional[AIManager]:
+    backend_url: str | None = None, license_token: str | None = None
+) -> AIManager | None:
     """Get AI manager instance configured for backend API."""
     if not backend_url or not license_token:
         return None
