@@ -74,6 +74,12 @@ uv run remind "$@"
 EOF
 chmod +x "${BIN_DIR}/remind"
 
+# Install and start the scheduler daemon
+echo ""
+echo "🔧 Installing scheduler daemon..."
+cd "$REPO_DIR"
+uv run remind scheduler --install 2>&1 | tail -1
+
 echo ""
 echo "✅ Installation complete!"
 echo ""
@@ -84,7 +90,14 @@ echo ""
 echo "2. List reminders:"
 echo "   remind list"
 echo ""
-echo "3. Edit config (optional):"
+echo "3. Mark reminder done:"
+echo "   remind done <ID>"
+echo ""
+echo "🔔 Notifications:"
+echo "   The scheduler daemon is running in the background!"
+echo "   You'll automatically get notifications for due reminders."
+echo ""
+echo "⚙️  Edit config (optional):"
 echo "   nano ~/.remind/config.toml"
 echo ""
 echo "💡 Make sure ~/.local/bin is in your PATH:"
