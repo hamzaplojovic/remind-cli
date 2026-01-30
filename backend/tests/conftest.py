@@ -1,6 +1,7 @@
 """Pytest configuration for backend tests."""
 
 import os
+
 import pytest
 
 

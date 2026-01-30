@@ -4,7 +4,6 @@ import json
 from typing import TypedDict
 
 import openai
-
 from app.config import get_settings
 from app.models import PriorityLevel
 

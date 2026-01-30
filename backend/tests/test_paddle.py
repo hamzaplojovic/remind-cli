@@ -2,8 +2,7 @@
 
 import hmac
 import json
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 def test_verify_paddle_webhook_valid():
@@ -34,7 +33,7 @@ def test_verify_paddle_webhook_invalid():
 
 def test_get_plan_tier_from_paddle_product():
     """Test mapping Paddle product IDs to plan tiers."""
-    from app.paddle import get_plan_tier_from_paddle_product, PADDLE_PRODUCT_MAPPING
+    from app.paddle import get_plan_tier_from_paddle_product
 
     # No mapping by default
     assert get_plan_tier_from_paddle_product("unknown_product") is None
@@ -122,6 +121,7 @@ def test_create_license_token_format():
 def test_webhook_bad_signature():
     """Test webhook rejects bad signature."""
     from fastapi.testclient import TestClient
+
     from backend.main import app
 
     client = TestClient(app)

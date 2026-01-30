@@ -1,32 +1,30 @@
 """FastAPI backend server for Remind."""
 
-from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
-
-from app.database import get_db, init_db
+from app.ai import suggest_reminder
+from app.auth import (
+    authenticate_token,
+    check_ai_quota,
+    check_rate_limit,
+    get_usage_stats,
+    increment_rate_limit,
+    log_usage,
+)
+from app.database import UserModel, get_db, init_db
+from app.email import send_license_email
 from app.models import (
     SuggestReminderRequest,
     SuggestReminderResponse,
     UsageStats,
 )
-from app.auth import (
-    authenticate_token,
-    check_rate_limit,
-    check_ai_quota,
-    log_usage,
-    increment_rate_limit,
-    get_usage_stats,
-)
-from app.ai import suggest_reminder
 from app.paddle import (
-    verify_paddle_webhook,
+    create_license_token,
     handle_subscription_created,
     handle_transaction_completed,
-    create_license_token,
+    verify_paddle_webhook,
 )
-from app.email import send_license_email
-from app.database import UserModel
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 
 app = FastAPI(title="Remind Backend", version="0.1.0")
 
@@ -53,7 +51,6 @@ async def paddle_webhook(request: Request, db: Session = Depends(get_db)):
 
     Generates license token and sends to customer email.
     """
-    from app.paddle import verify_paddle_webhook
 
     raw_body = await request.body()
     signature = request.headers.get("X-Paddle-Signature", "")
