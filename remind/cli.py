@@ -415,7 +415,10 @@ def upgrade() -> None:
 
     else:
         typer.echo("✗ Could not find Remind CLI installation", err=True)
-        typer.echo("  Try: curl -fsSL https://raw.githubusercontent.com/hamzaplojovic/remind-cli/master/build_tools/install.sh | bash", err=True)
+        typer.echo(
+            "  Try: curl -fsSL https://raw.githubusercontent.com/hamzaplojovic/remind-cli/master/build_tools/install.sh | bash",
+            err=True,
+        )
         raise typer.Exit(1)
 
 
