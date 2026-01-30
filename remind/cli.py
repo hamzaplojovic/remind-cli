@@ -259,6 +259,25 @@ def report() -> None:
 
 
 @app.command()
+def remove(reminder_id: int = typer.Argument(..., help="Reminder ID to remove")) -> None:
+    """Remove a reminder permanently."""
+    db = get_db()
+    reminder = db.get_reminder(reminder_id)
+
+    if not reminder:
+        typer.echo(f"✗ Reminder {reminder_id} not found")
+        raise typer.Exit(1)
+
+    # Confirm deletion
+    typer.echo(f"Delete reminder: {reminder.text}")
+    if typer.confirm("Are you sure?"):
+        db.delete_reminder(reminder_id)
+        typer.echo(f"✓ Reminder {reminder_id} removed")
+    else:
+        typer.echo("Cancelled.")
+
+
+@app.command()
 def scheduler(
     install: bool = typer.Option(False, "--install", help="Install as background service"),
     uninstall: bool = typer.Option(False, "--uninstall", help="Uninstall background service"),
@@ -280,6 +299,43 @@ def scheduler(
     typer.echo("Starting scheduler daemon (Ctrl+C to stop)...")
     from remind.scheduler import run_scheduler
     run_scheduler()
+
+
+@app.command()
+def upgrade() -> None:
+    """Upgrade Remind CLI to the latest version."""
+    import subprocess
+    import sys
+
+    typer.echo("Upgrading Remind CLI...")
+
+    repo_dir = f"{typer.get_app_dir('remind')}/../remind-cli"
+
+    try:
+        # Pull latest changes
+        subprocess.run(
+            ["git", "-C", repo_dir, "pull"],
+            check=True,
+            capture_output=True,
+        )
+        typer.echo("✓ Downloaded latest version")
+
+        # Sync dependencies
+        subprocess.run(
+            ["uv", "sync"],
+            cwd=repo_dir,
+            check=True,
+            capture_output=True,
+        )
+        typer.echo("✓ Updated dependencies")
+        typer.echo("✓ Remind CLI upgraded successfully!")
+
+    except subprocess.CalledProcessError as e:
+        typer.echo(f"✗ Upgrade failed: {e.stderr.decode() if e.stderr else str(e)}", err=True)
+        raise typer.Exit(1)
+    except Exception as e:
+        typer.echo(f"✗ Error during upgrade: {e}", err=True)
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":
