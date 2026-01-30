@@ -156,6 +156,19 @@ class NotificationManager:
             notification.send()
             return True
         except Exception as e:
+            # Fallback for macOS when notify-py fails (e.g., in PyInstaller bundles)
+            if self.platform_info.is_macos:
+                try:
+                    script = f'display notification "{message}" with title "{title}"'
+                    subprocess.run(
+                        ["osascript", "-e", script],
+                        timeout=5,
+                        capture_output=True,
+                    )
+                    return True
+                except Exception:
+                    pass
+
             # Log error but don't fail - notification was attempted
             print(f"Warning: Error sending notification: {e}")
             return False

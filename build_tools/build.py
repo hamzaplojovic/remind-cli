@@ -1,5 +1,6 @@
 """Build script for creating standalone binaries."""
 
+import os
 import platform
 import subprocess
 import sys
@@ -18,6 +19,20 @@ def build_binary(output_dir: Path | None = None) -> None:
 
     print(f"Building for {system} ({arch})")
 
+    # Find notify-py Notificator.app for macOS notifications
+    notificator_path = None
+    if system == "Darwin":
+        try:
+            import notifypy.os_notifiers
+
+            os_notifiers_dir = os.path.dirname(notifypy.os_notifiers.__file__)
+            notificator_path = os.path.join(os_notifiers_dir, "binaries", "Notificator.app")
+            if not os.path.exists(notificator_path):
+                notificator_path = None
+                print("⚠ Warning: Could not find Notificator.app for notifications")
+        except (ImportError, AttributeError):
+            pass
+
     # PyInstaller command
     cmd = [
         sys.executable,
@@ -33,8 +48,14 @@ def build_binary(output_dir: Path | None = None) -> None:
         "build",
         "--specpath",
         "build",
-        "remind/__main__.py",
     ]
+
+    # Add notify-py bundle on macOS
+    if notificator_path:
+        binaries_dir = os.path.dirname(notificator_path)
+        cmd.extend(["--add-data", f"{binaries_dir}:notifypy/os_notifiers"])
+
+    cmd.append("remind/__main__.py")
 
     try:
         subprocess.run(cmd, check=True, cwd=Path(__file__).parent.parent)
