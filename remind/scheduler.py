@@ -1,19 +1,20 @@
 """Background scheduler for Remind."""
 
-import platform
 import signal
 import subprocess
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from remind.config import load_config
 from remind.db import Database
 from remind.models import Reminder
 from remind.notifications import NotificationManager
+from remind.platform_capabilities import PlatformCapabilities
+from remind.platform_utils import get_platform
 from remind.premium import get_license_manager
+from remind.utils import ensure_dir, get_logs_dir, run_command
 
 
 class SchedulerState:
@@ -46,8 +47,7 @@ class SchedulerState:
         for interval in nudge_intervals:
             if (
                 time_since_due > interval
-                and (datetime.now(timezone.utc) - last_nudge).total_seconds()
-                > interval * 60
+                and (datetime.now(timezone.utc) - last_nudge).total_seconds() > interval * 60
             ):
                 return True
 
@@ -66,7 +66,7 @@ class SchedulerState:
 class Scheduler:
     """Background scheduler for sending reminders."""
 
-    def __init__(self, db: Optional[Database] = None):
+    def __init__(self, db: Database | None = None):
         """Initialize scheduler."""
         self.db = db or Database()
         self.config = load_config()
@@ -74,12 +74,12 @@ class Scheduler:
         self.state = SchedulerState()
         self.running = False
 
-        # Try to initialize notifications
-        try:
-            self.notifications = NotificationManager()
-        except ImportError:
-            print("Warning: Notifications not available")
-            self.notifications = None  # type: ignore
+        # Initialize notifications (graceful degradation if unavailable)
+        self.notifications = NotificationManager(strict=False)
+        if not self.notifications.is_available():
+            print("Warning: Notifications not available (will print to console)")
+        if not self.notifications.is_sound_available():
+            print("Warning: Sound playback not available")
 
     def start(self) -> None:
         """Start the scheduler daemon."""
@@ -168,15 +168,26 @@ class Scheduler:
             print(f"Error sending nudge: {e}")
 
     def install_background_service(self) -> None:
-        """Install scheduler as a background service."""
-        system = platform.system()
+        """Install scheduler as a background service.
 
-        if system == "Darwin":
+        Checks for platform support and required tools before installing.
+        """
+        platform_info = get_platform()
+
+        if platform_info.is_macos:
+            if not PlatformCapabilities.test_launchctl():
+                print("Error: launchctl not found. Cannot install scheduler on macOS.")
+                return
             self._install_macos_agent()
-        elif system == "Linux":
+        elif platform_info.is_linux:
+            if not PlatformCapabilities.test_systemd():
+                print("Error: systemd not found. Cannot install scheduler on Linux.")
+                print("Note: Daemon mode requires systemd (present on all modern distributions).")
+                return
             self._install_linux_service()
         else:
-            print(f"Unsupported platform: {system}")
+            print(f"⚠️  Unsupported platform: {platform_info.system}")
+            print("Daemon mode is not supported on your system.")
 
     def _install_macos_agent(self) -> None:
         """Install macOS launchd agent."""
@@ -186,11 +197,11 @@ class Scheduler:
         remind_path = os.path.abspath(sys.argv[0])
 
         # Create LaunchAgent directory
-        la_dir = Path.home() / "Library" / "LaunchAgents"
-        la_dir.mkdir(parents=True, exist_ok=True)
+        la_dir = ensure_dir(Path.home() / "Library" / "LaunchAgents")
 
         # Create plist file
         plist_path = la_dir / "com.remind.scheduler.plist"
+        logs_dir = get_logs_dir()
 
         plist_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -210,9 +221,9 @@ class Scheduler:
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>{Path.home()}/.remind/logs/scheduler.log</string>
+    <string>{logs_dir}/scheduler.log</string>
     <key>StandardErrorPath</key>
-    <string>{Path.home()}/.remind/logs/scheduler.error.log</string>
+    <string>{logs_dir}/scheduler.error.log</string>
 </dict>
 </plist>
 """
@@ -220,17 +231,9 @@ class Scheduler:
         # Write plist file
         plist_path.write_text(plist_content)
 
-        # Create logs directory
-        logs_dir = Path.home() / ".remind" / "logs"
-        logs_dir.mkdir(parents=True, exist_ok=True)
-
         # Load the service
         try:
-            subprocess.run(
-                ["launchctl", "load", str(plist_path)],
-                check=True,
-                capture_output=True,
-            )
+            run_command(["launchctl", "load", str(plist_path)])
             print(f"✓ macOS LaunchAgent installed: {plist_path}")
         except subprocess.CalledProcessError as e:
             print(f"Error loading LaunchAgent: {e.stderr.decode()}")
@@ -243,8 +246,7 @@ class Scheduler:
         remind_path = os.path.abspath(sys.argv[0])
 
         # Create systemd user services directory
-        sd_dir = Path.home() / ".config" / "systemd" / "user"
-        sd_dir.mkdir(parents=True, exist_ok=True)
+        sd_dir = ensure_dir(Path.home() / ".config" / "systemd" / "user")
 
         # Create service file
         service_path = sd_dir / "remind-scheduler.service"
@@ -269,27 +271,14 @@ WantedBy=default.target
         service_path.write_text(service_content)
         service_path.chmod(0o644)
 
-        # Create logs directory
-        logs_dir = Path.home() / ".remind" / "logs"
-        logs_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure logs directory exists
+        get_logs_dir()
 
         # Reload and enable the service
         try:
-            subprocess.run(
-                ["systemctl", "--user", "daemon-reload"],
-                check=True,
-                capture_output=True,
-            )
-            subprocess.run(
-                ["systemctl", "--user", "enable", "remind-scheduler.service"],
-                check=True,
-                capture_output=True,
-            )
-            subprocess.run(
-                ["systemctl", "--user", "start", "remind-scheduler.service"],
-                check=True,
-                capture_output=True,
-            )
+            run_command(["systemctl", "--user", "daemon-reload"])
+            run_command(["systemctl", "--user", "enable", "remind-scheduler.service"])
+            run_command(["systemctl", "--user", "start", "remind-scheduler.service"])
             print(f"✓ Linux systemd service installed: {service_path}")
         except subprocess.CalledProcessError as e:
             print(f"Error setting up systemd service: {e.stderr.decode()}")

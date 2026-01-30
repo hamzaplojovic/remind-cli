@@ -45,7 +45,9 @@ class UsageLogModel(Base):
     metadata_json = Column(JSON, default=dict, nullable=False)
 
     def __repr__(self):
-        return f"<UsageLogModel user_id={self.user_id} feature={self.feature} cost={self.cost_cents}¢>"
+        return (
+            f"<UsageLogModel user_id={self.user_id} feature={self.feature} cost={self.cost_cents}¢>"
+        )
 
 
 class RateLimitModel(Base):
@@ -66,6 +68,7 @@ class RateLimitModel(Base):
 def get_engine():
     """Create database engine."""
     from app.config import get_settings
+
     settings = get_settings()
     is_sqlite = "sqlite" in settings.database_url
     connect_args = {"check_same_thread": False} if is_sqlite else {}

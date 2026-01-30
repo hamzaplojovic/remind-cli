@@ -3,7 +3,6 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from remind.config import get_license_path
 from remind.models import License
@@ -18,10 +17,10 @@ class PremiumRequired(Exception):
 class LicenseManager:
     """Manages license tokens and premium feature access."""
 
-    def __init__(self, license_path: Optional[Path] = None):
+    def __init__(self, license_path: Path | None = None):
         """Initialize license manager."""
         self.license_path = license_path or get_license_path()
-        self._license: Optional[License] = None
+        self._license: License | None = None
 
     def has_license(self) -> bool:
         """Check if a valid license exists."""
@@ -37,7 +36,7 @@ class LicenseManager:
         except Exception:
             return False
 
-    def get_license(self) -> Optional[License]:
+    def get_license(self) -> License | None:
         """Get the current license if it exists."""
         if self._license:
             return self._license
@@ -50,7 +49,7 @@ class LicenseManager:
     def _load_license(self) -> None:
         """Load license from file."""
         try:
-            with open(self.license_path, "r") as f:
+            with open(self.license_path) as f:
                 data = json.load(f)
                 # Validate basic structure
                 if "token" not in data:
@@ -59,11 +58,10 @@ class LicenseManager:
         except Exception as e:
             raise ValueError(f"Could not load license: {e}")
 
-    def create_license(
-        self, token: str, email: Optional[str] = None
-    ) -> License:
+    def create_license(self, token: str, email: str | None = None) -> License:
         """Create and save a new license."""
         from datetime import timezone
+
         license_obj = License(token=token, created_at=datetime.now(timezone.utc), email=email)
 
         # Ensure directory exists
@@ -86,7 +84,7 @@ class LicenseManager:
 
 
 # Global license manager instance
-_license_manager: Optional[LicenseManager] = None
+_license_manager: LicenseManager | None = None
 
 
 def get_license_manager() -> LicenseManager:

@@ -1,13 +1,20 @@
 """Configuration management for Remind."""
 
-import os
 from pathlib import Path
-from typing import Optional
 
 from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from remind.models import Config as ConfigModel
+from remind.platform_utils import (
+    get_config_path as _get_config_path,
+)
+from remind.platform_utils import (
+    get_db_path as _get_db_path,
+)
+from remind.platform_utils import (
+    get_license_path as _get_license_path,
+)
 
 
 class Settings(BaseSettings):
@@ -18,7 +25,7 @@ class Settings(BaseSettings):
     notifications_enabled: bool = True
     notification_sound_enabled: bool = True
     ai_rephrasing_enabled: bool = True
-    openai_api_key: Optional[str] = None
+    openai_api_key: str | None = None
     nudge_intervals_minutes: str = "5,15,60"
 
     model_config = SettingsConfigDict(
@@ -29,26 +36,19 @@ class Settings(BaseSettings):
     )
 
 
-def get_app_dir() -> Path:
-    """Get the application directory, creating it if necessary."""
-    app_dir = Path.home() / ".remind"
-    app_dir.mkdir(parents=True, exist_ok=True)
-    return app_dir
-
-
 def get_db_path() -> Path:
-    """Get the database path."""
-    return get_app_dir() / "reminders.db"
+    """Get the database path (platform-specific)."""
+    return _get_db_path()
 
 
 def get_license_path() -> Path:
-    """Get the license token file path."""
-    return get_app_dir() / "license.json"
+    """Get the license token file path (platform-specific)."""
+    return _get_license_path()
 
 
 def get_config_path() -> Path:
-    """Get the config file path."""
-    return get_app_dir() / "config.toml"
+    """Get the config file path (platform-specific)."""
+    return _get_config_path()
 
 
 def load_config() -> ConfigModel:
@@ -90,9 +90,7 @@ def load_config() -> ConfigModel:
     # Parse nudge intervals
     if "nudge_intervals_minutes" not in config_data:
         nudge_str = settings.nudge_intervals_minutes
-        config_data["nudge_intervals_minutes"] = [
-            int(x.strip()) for x in nudge_str.split(",")
-        ]
+        config_data["nudge_intervals_minutes"] = [int(x.strip()) for x in nudge_str.split(",")]
 
     try:
         return ConfigModel(**config_data)
@@ -106,10 +104,11 @@ def save_config(config: ConfigModel) -> None:
     config_path = get_config_path()
     try:
         import tomllib
+
         import toml  # type: ignore
     except ModuleNotFoundError:
         try:
-            import tomli as tomllib  # type: ignore
+            import tomli as tomllib  # type: ignore  # noqa: F401
             import tomli_w as toml  # type: ignore
         except ModuleNotFoundError:
             print("Warning: toml libraries not available, skipping config save")

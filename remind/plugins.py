@@ -1,7 +1,7 @@
 """Plugin system for Remind (MVP placeholder)."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 
 class RemindPlugin(ABC):
@@ -36,7 +36,7 @@ class PluginManager:
         """Register a plugin."""
         self.plugins[plugin.name] = plugin
 
-    def get_plugin(self, name: str) -> Optional[RemindPlugin]:
+    def get_plugin(self, name: str) -> RemindPlugin | None:
         """Get a plugin by name."""
         return self.plugins.get(name)
 

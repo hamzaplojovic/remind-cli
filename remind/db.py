@@ -1,11 +1,12 @@
 """Database operations for Remind."""
 
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
-from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine, select
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from remind.config import get_db_path
@@ -45,7 +46,7 @@ class ReminderModel(Base):
 class Database:
     """Database manager for Remind."""
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         """Initialize database connection."""
         if db_path is None:
             db_path = get_db_path()
@@ -72,17 +73,25 @@ class Database:
         # Simple version 1 schema - no migrations needed yet
         pass
 
+    @contextmanager
+    def get_session(self) -> Generator[Session]:
+        """Context manager for database sessions - ensures proper cleanup."""
+        session = self.SessionLocal()
+        try:
+            yield session
+        finally:
+            session.close()
+
     def add_reminder(
         self,
         text: str,
         due_at: datetime,
         priority: PriorityLevel = PriorityLevel.MEDIUM,
-        project_context: Optional[str] = None,
-        ai_suggested_text: Optional[str] = None,
+        project_context: str | None = None,
+        ai_suggested_text: str | None = None,
     ) -> Reminder:
         """Add a new reminder to the database."""
-        session = self.SessionLocal()
-        try:
+        with self.get_session() as session:
             reminder = ReminderModel(
                 text=text,
                 due_at=due_at,
@@ -94,22 +103,16 @@ class Database:
             session.commit()
             session.refresh(reminder)
             return reminder.to_pydantic()
-        finally:
-            session.close()
 
-    def get_reminder(self, reminder_id: int) -> Optional[Reminder]:
+    def get_reminder(self, reminder_id: int) -> Reminder | None:
         """Get a single reminder by ID."""
-        session = self.SessionLocal()
-        try:
+        with self.get_session() as session:
             reminder = session.query(ReminderModel).filter_by(id=reminder_id).first()
             return reminder.to_pydantic() if reminder else None
-        finally:
-            session.close()
 
     def list_active_reminders(self) -> list[Reminder]:
         """List all active (not done) reminders, sorted by due date."""
-        session = self.SessionLocal()
-        try:
+        with self.get_session() as session:
             reminders = (
                 session.query(ReminderModel)
                 .filter(ReminderModel.done_at.is_(None))
@@ -117,24 +120,16 @@ class Database:
                 .all()
             )
             return [r.to_pydantic() for r in reminders]
-        finally:
-            session.close()
 
     def list_all_reminders(self) -> list[Reminder]:
         """List all reminders, including done ones."""
-        session = self.SessionLocal()
-        try:
-            reminders = (
-                session.query(ReminderModel).order_by(ReminderModel.due_at).all()
-            )
+        with self.get_session() as session:
+            reminders = session.query(ReminderModel).order_by(ReminderModel.due_at).all()
             return [r.to_pydantic() for r in reminders]
-        finally:
-            session.close()
 
-    def mark_done(self, reminder_id: int) -> Optional[Reminder]:
+    def mark_done(self, reminder_id: int) -> Reminder | None:
         """Mark a reminder as done (soft delete)."""
-        session = self.SessionLocal()
-        try:
+        with self.get_session() as session:
             reminder = session.query(ReminderModel).filter_by(id=reminder_id).first()
             if reminder:
                 reminder.done_at = datetime.now(timezone.utc)
@@ -142,13 +137,10 @@ class Database:
                 session.refresh(reminder)
                 return reminder.to_pydantic()
             return None
-        finally:
-            session.close()
 
     def search_reminders(self, query: str) -> list[Reminder]:
         """Search reminders by text content."""
-        session = self.SessionLocal()
-        try:
+        with self.get_session() as session:
             search_pattern = f"%{query}%"
             reminders = (
                 session.query(ReminderModel)
@@ -157,13 +149,10 @@ class Database:
                 .all()
             )
             return [r.to_pydantic() for r in reminders]
-        finally:
-            session.close()
 
     def get_due_reminders(self, now: datetime) -> list[Reminder]:
         """Get all reminders that are due (and not done)."""
-        session = self.SessionLocal()
-        try:
+        with self.get_session() as session:
             reminders = (
                 session.query(ReminderModel)
                 .filter(ReminderModel.done_at.is_(None))
@@ -172,8 +161,6 @@ class Database:
                 .all()
             )
             return [r.to_pydantic() for r in reminders]
-        finally:
-            session.close()
 
     def close(self) -> None:
         """Close database connection."""

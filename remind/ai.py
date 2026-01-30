@@ -1,11 +1,10 @@
 """AI-powered features for Remind via backend API."""
 
-from typing import Optional
-
 import httpx
 
-from remind.models import AIResponse, PriorityLevel
+from remind.models import AIResponse
 from remind.premium import requires_premium
+from remind.utils import parse_priority
 
 
 class AIManager:
@@ -39,18 +38,13 @@ class AIManager:
             elif response.status_code == 429:
                 raise ValueError(response.json().get("detail", "Rate limited or quota exceeded"))
             elif response.status_code != 200:
-                raise ValueError(
-                    f"Backend error: {response.status_code} - {response.text}"
-                )
+                raise ValueError(f"Backend error: {response.status_code} - {response.text}")
 
             data = response.json()
 
             # Parse backend response
-            priority_str = data.get("priority", "medium").lower()
-            try:
-                priority = PriorityLevel(priority_str)
-            except ValueError:
-                priority = PriorityLevel.MEDIUM
+            priority_str = data.get("priority", "medium")
+            priority = parse_priority(priority_str)
 
             cost_cents = data.get("cost_cents", 0)
             cost_estimate = cost_cents / 100.0  # Convert cents to dollars
@@ -73,8 +67,8 @@ class AIManager:
 
 
 def get_ai_manager(
-    backend_url: Optional[str] = None, license_token: Optional[str] = None
-) -> Optional[AIManager]:
+    backend_url: str | None = None, license_token: str | None = None
+) -> AIManager | None:
     """Get AI manager instance configured for backend API."""
     if not backend_url or not license_token:
         return None

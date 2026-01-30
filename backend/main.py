@@ -65,6 +65,7 @@ async def paddle_webhook(request: Request, db: Session = Depends(get_db)):
     # Parse JSON
     try:
         import json
+
         event_data = json.loads(raw_body)
     except json.JSONDecodeError:
         return JSONResponse({"error": "Invalid JSON"}, status_code=400)

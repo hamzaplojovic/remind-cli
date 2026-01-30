@@ -13,10 +13,14 @@ remind/
 │   ├── models.py        # Pydantic data models
 │   ├── scheduler.py     # Background scheduler daemon
 │   ├── notifications.py # Desktop notifications (notify-py)
+│   ├── platform_utils.py       # Platform abstraction layer (macOS/Linux/Windows)
+│   ├── platform_capabilities.py # System capability detection
 │   ├── ai.py           # OpenAI integration (premium)
 │   ├── premium.py      # License verification
 │   └── plugins.py      # Plugin system (v1.1+)
 ├── tests/              # Pytest suite
+├── .github/workflows/  # CI/CD
+│   └── test.yml        # Matrix testing (macOS/Linux, Python 3.12-3.13)
 ├── build_tools/        # Build & distribution
 │   ├── build.py        # PyInstaller wrapper
 │   ├── install.sh      # Curl installer script
@@ -35,6 +39,72 @@ remind/
 3. **UTC Storage**: All times stored as UTC in database, converted to user timezone on display
 4. **Soft Deletes**: Reminders marked done (not deleted) for analytics
 5. **No Remote Backend**: License verification is local-only (read from `~/.remind/license.json`)
+6. **Cross-Platform**: Graceful degradation on macOS, Linux, and Windows
+
+## Platform Support & Requirements
+
+### macOS (Primary)
+- **Python**: 3.12+
+- **Included by default**:
+  - `afplay` for sound playback
+  - `launchctl` for daemon services
+  - Native notification center
+- **Via pip**: `notify-py`
+- **Status**: ✅ Fully supported
+- **App data location**: `~/Library/Application Support/Remind`
+
+### Linux (Primary)
+- **Python**: 3.12+
+- **Required packages**:
+  - `libnotify-bin`: Desktop notifications (`sudo apt install libnotify-bin`)
+  - `pulseaudio` or similar: Sound playback (usually pre-installed)
+- **Via pip**: `notify-py[dbus]`
+- **Scheduler**: systemd user services (all modern distros)
+- **Status**: ✅ Fully supported
+- **App data location**: `~/.local/share/remind` (XDG spec compliant)
+
+### Windows (Experimental)
+- **Python**: 3.12+
+- **Status**: ❌ Not yet supported (planned for v1.1)
+- **Limitations**:
+  - No native daemon service support
+  - Notifications and sound not implemented
+
+### Cross-Platform Compatibility
+
+The app uses **graceful degradation**:
+
+| Feature | macOS | Linux | Windows |
+|---------|-------|-------|---------|
+| Reminders (core) | ✅ | ✅ | ✅ |
+| Desktop Notifications | ✅ | ✅ | ❌ |
+| Sound Alerts | ✅ | ✅ (PulseAudio) | ❌ |
+| Daemon Service | ✅ (launchd) | ✅ (systemd) | ❌ |
+| Automatic Scheduling | ✅ | ✅ | Manual only |
+
+**Graceful Degradation**: If a feature is unavailable, the app:
+- Continues to function with console output instead
+- Prints warnings but doesn't crash
+- Allows users to run the app on unsupported systems
+
+### Platform Detection
+
+- `remind.platform_utils.py`: Provides platform-specific paths and configuration
+- `remind.platform_capabilities.py`: Detects available features at runtime
+- Tests use `skip_if_not_macos`, `skip_if_not_linux`, `skip_if_no_notifications`, etc.
+
+### Running System Diagnostics
+
+```bash
+remind doctor
+```
+
+This command checks:
+- Database connectivity
+- Notification system availability
+- Sound playback capability
+- Scheduler daemon status
+- Configuration validity
 
 ## Key Design Decisions
 

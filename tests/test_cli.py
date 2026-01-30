@@ -9,6 +9,7 @@ runner = CliRunner()
 
 def test_add_command(test_db, monkeypatch):
     """Test add command."""
+
     # Mock the database
     def mock_get_db():
         return test_db
@@ -25,6 +26,7 @@ def test_add_command(test_db, monkeypatch):
 
 def test_list_command(test_db, monkeypatch):
     """Test list command."""
+
     def mock_get_db():
         return test_db
 
@@ -32,21 +34,24 @@ def test_list_command(test_db, monkeypatch):
 
     # Add a reminder first
     from datetime import datetime, timezone
+
     test_db.add_reminder("Test task", datetime.now(timezone.utc))
 
-    result = runner.invoke(app, ["list-reminders"])
+    result = runner.invoke(app, ["list"])
     assert result.exit_code == 0
     assert "Test task" in result.stdout
 
 
 def test_done_command(test_db, monkeypatch):
     """Test marking reminder as done."""
+
     def mock_get_db():
         return test_db
 
     monkeypatch.setattr("remind.cli.get_db", mock_get_db)
 
     from datetime import datetime, timezone
+
     reminder = test_db.add_reminder("Test task", datetime.now(timezone.utc))
 
     result = runner.invoke(app, ["done", str(reminder.id)])

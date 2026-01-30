@@ -1,7 +1,6 @@
 """CLI interface for Remind."""
 
 from datetime import datetime, timezone
-from typing import Optional
 
 import typer
 from dateparser import parse as dateparser_parse
@@ -9,12 +8,72 @@ from dateparser import parse as dateparser_parse
 from remind.ai import get_ai_manager
 from remind.config import load_config, save_config
 from remind.db import Database
-from remind.models import Config as ConfigModel
 from remind.models import PriorityLevel, Reminder
 from remind.premium import PremiumRequired, get_license_manager
-from remind.scheduler import Scheduler
+from remind.utils import format_datetime, parse_priority
 
 app = typer.Typer(help="Remind: AI-powered reminder CLI")
+
+
+def ensure_scheduler_installed() -> None:
+    """Ensure scheduler is installed on first use (auto-setup on first reminder)."""
+    import os
+    import platform
+
+    system = platform.system()
+    scheduler_installed = False
+
+    if system == "Darwin":  # macOS
+        plist_path = os.path.expanduser("~/Library/LaunchAgents/com.remind.scheduler.plist")
+        scheduler_installed = os.path.exists(plist_path)
+    elif system == "Linux":
+        service_path = os.path.expanduser("~/.config/systemd/user/remind-scheduler.service")
+        scheduler_installed = os.path.exists(service_path)
+
+    # Auto-install on first use
+    if not scheduler_installed and system in ("Darwin", "Linux"):
+        try:
+            from remind.scheduler import Scheduler
+
+            typer.echo(
+                "ℹ️  Setting up background scheduler for the first time...",
+                err=True,
+            )
+            s = Scheduler()
+            s.install_background_service()
+            typer.echo(
+                "✓ Scheduler installed! Reminders will now run in the background.",
+                err=True,
+            )
+        except Exception as e:
+            # Don't fail if scheduler setup doesn't work - graceful degradation
+            typer.echo(
+                f"⚠️  Could not auto-install scheduler: {e}. "
+                "Run 'remind scheduler --install' manually.",
+                err=True,
+            )
+
+
+def display_reminder(
+    reminder: Reminder,
+    show_priority: bool = False,
+    show_ai_text: bool = False,
+) -> None:
+    """Display a single reminder with consistent formatting."""
+    status = "✓" if reminder.done_at else "○"
+    typer.echo(f"{status} ID {reminder.id}: {reminder.text}")
+
+    due_str = format_datetime(reminder.due_at)
+    if show_priority:
+        priority_icon = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(
+            reminder.priority.value, "⚪"
+        )
+        typer.echo(f"  {due_str} {priority_icon}")
+    else:
+        typer.echo(f"  {due_str}")
+
+    if show_ai_text and reminder.ai_suggested_text:
+        typer.echo(f"  Suggested: {reminder.ai_suggested_text}")
 
 
 def get_db() -> Database:
@@ -22,7 +81,7 @@ def get_db() -> Database:
     return Database()
 
 
-def parse_datetime(text: str) -> Optional[datetime]:
+def parse_datetime(text: str) -> datetime | None:
     """Parse natural language datetime string."""
     parsed = dateparser_parse(text, settings={"RETURN_AS_TIMEZONE_AWARE": True})
     if parsed:
@@ -34,18 +93,19 @@ def parse_datetime(text: str) -> Optional[datetime]:
 @app.command()
 def add(
     text: str = typer.Argument(..., help="Reminder text"),
-    due: Optional[str] = typer.Option(
+    due: str | None = typer.Option(
         None, "--due", "-d", help="Due time (natural language, e.g., 'tomorrow 3pm')"
     ),
-    priority: Optional[str] = typer.Option(
+    priority: str | None = typer.Option(
         None, "--priority", "-p", help="Priority level: high, medium, low"
     ),
-    project: Optional[str] = typer.Option(
-        None, "--project", "-c", help="Project context"
-    ),
+    project: str | None = typer.Option(None, "--project", "-c", help="Project context"),
     no_ai: bool = typer.Option(False, "--no-ai", help="Skip AI suggestions"),
 ) -> None:
     """Add a new reminder."""
+    # Ensure scheduler is running in background
+    ensure_scheduler_installed()
+
     db = get_db()
     config = load_config()
 
@@ -68,13 +128,19 @@ def add(
         )
 
     # Parse priority
-    priority_level = PriorityLevel.MEDIUM
     if priority:
-        try:
-            priority_level = PriorityLevel(priority.lower())
-        except ValueError:
-            typer.echo(f"Invalid priority: {priority}")
+        priority_level = parse_priority(priority)
+        if priority_level == PriorityLevel.MEDIUM and priority.lower() not in (
+            "medium",
+            "med",
+            "m",
+        ):
+            # Only error if input wasn't valid and didn't default to MEDIUM
+            valid_values = ", ".join([p.value for p in PriorityLevel])
+            typer.echo(f"Invalid priority: {priority}. Valid values: {valid_values}")
             raise typer.Exit(1)
+    else:
+        priority_level = PriorityLevel.MEDIUM
 
     # Check for AI rephrasing
     ai_suggested_text = None
@@ -130,9 +196,7 @@ def add(
 @app.command()
 def list(
     all: bool = typer.Option(False, "--all", "-a", help="Show all reminders including done"),
-    project: Optional[str] = typer.Option(
-        None, "--project", "-c", help="Filter by project"
-    ),
+    project: str | None = typer.Option(None, "--project", "-c", help="Filter by project"),
 ) -> None:
     """List reminders."""
     db = get_db()
@@ -149,13 +213,49 @@ def list(
         typer.echo("No reminders found.")
         return
 
-    typer.echo("\n📋 Reminders:")
-    for reminder in reminders:
-        status = "✓" if reminder.done_at else "○"
-        typer.echo(f"{status} ID {reminder.id}: {reminder.text}")
-        typer.echo(f"  Due: {reminder.due_at} | Priority: {reminder.priority.value}")
-        if reminder.ai_suggested_text:
-            typer.echo(f"  Suggested: {reminder.ai_suggested_text}")
+    # Categorize reminders by due date
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+
+    def ensure_aware(dt):
+        """Convert naive datetime to aware (UTC)."""
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+    overdue = [r for r in reminders if ensure_aware(r.due_at) < now]
+    due_today = [r for r in reminders if ensure_aware(r.due_at).date() == now.date()]
+    upcoming = [r for r in reminders if ensure_aware(r.due_at) > now]
+
+    # Show summary
+    summary_parts = [f"{len(reminders)} total"]
+    if overdue:
+        summary_parts.append(f"{len(overdue)} overdue")
+    if due_today:
+        summary_parts.append(f"{len(due_today)} today")
+    if upcoming:
+        summary_parts.append(f"{len(upcoming)} upcoming")
+
+    typer.echo(f"\n📋 Reminders: {', '.join(summary_parts)}")
+
+    # Show overdue first (most important)
+    if overdue:
+        typer.echo("\n⚠️  Overdue:")
+        for reminder in overdue:
+            display_reminder(reminder, show_priority=True, show_ai_text=False)
+
+    # Then due today
+    if due_today:
+        typer.echo("\n📅 Due today:")
+        for reminder in due_today:
+            display_reminder(reminder, show_priority=True, show_ai_text=False)
+
+    # Then upcoming (limit to 10)
+    if upcoming:
+        typer.echo("\n📆 Upcoming:")
+        for reminder in upcoming[:10]:
+            display_reminder(reminder, show_priority=True, show_ai_text=False)
+        if len(upcoming) > 10:
+            typer.echo(f"  ... and {len(upcoming) - 10} more")
 
 
 @app.command()
@@ -186,24 +286,22 @@ def search(query: str = typer.Argument(..., help="Search query")) -> None:
 
     typer.echo(f"\n🔍 Results for '{query}':")
     for reminder in results:
-        status = "✓" if reminder.done_at else "○"
-        typer.echo(f"{status} ID {reminder.id}: {reminder.text}")
-        typer.echo(f"  Due: {reminder.due_at}")
+        display_reminder(reminder, show_priority=False, show_ai_text=False)
 
 
 @app.command()
 def settings(
-    timezone: Optional[str] = typer.Option(None, "--timezone", help="Set timezone"),
-    interval: Optional[int] = typer.Option(
+    timezone: str | None = typer.Option(None, "--timezone", help="Set timezone"),
+    interval: int | None = typer.Option(
         None, "--interval", help="Scheduler check interval in minutes"
     ),
-    ai_enabled: Optional[bool] = typer.Option(
+    ai_enabled: bool | None = typer.Option(
         None, "--ai/--no-ai", help="Enable/disable AI suggestions"
     ),
-    sound_enabled: Optional[bool] = typer.Option(
+    sound_enabled: bool | None = typer.Option(
         None, "--sound/--no-sound", help="Enable/disable notification sounds"
     ),
-    api_key: Optional[str] = typer.Option(None, "--api-key", help="OpenAI API key"),
+    api_key: str | None = typer.Option(None, "--api-key", help="OpenAI API key"),
     show: bool = typer.Option(False, "--show", help="Show current settings"),
 ) -> None:
     """Manage settings."""
@@ -214,7 +312,9 @@ def settings(
         typer.echo(f"  Timezone: {config.timezone}")
         typer.echo(f"  Scheduler interval: {config.scheduler_interval_minutes}m")
         typer.echo(f"  AI suggestions: {'enabled' if config.ai_rephrasing_enabled else 'disabled'}")
-        typer.echo(f"  Notification sounds: {'enabled' if config.notification_sound_enabled else 'disabled'}")
+        typer.echo(
+            f"  Notification sounds: {'enabled' if config.notification_sound_enabled else 'disabled'}"
+        )
         typer.echo(f"  Nudge intervals: {config.nudge_intervals_minutes}")
         return
 
@@ -265,8 +365,8 @@ def report() -> None:
 @app.command()
 def upgrade() -> None:
     """Upgrade Remind CLI to the latest version."""
-    import subprocess
     import os
+    import subprocess
 
     repo_dir = os.path.expanduser("~/remind-cli")
 
@@ -306,9 +406,9 @@ def upgrade() -> None:
 @app.command()
 def remove() -> None:
     """Uninstall Remind CLI from system."""
-    import subprocess
     import os
     import shutil
+    import subprocess
 
     repo_dir = os.path.expanduser("~/remind-cli")
     bin_file = os.path.expanduser("~/.local/bin/remind")
@@ -361,6 +461,7 @@ def scheduler(
     if install:
         typer.echo("Installing scheduler as background service...")
         from remind.scheduler import Scheduler
+
         s = Scheduler()
         s.install_background_service()
         typer.echo("✓ Scheduler installed. It will start on next login/boot.")
@@ -373,7 +474,133 @@ def scheduler(
     # Run scheduler daemon
     typer.echo("Starting scheduler daemon (Ctrl+C to stop)...")
     from remind.scheduler import run_scheduler
+
     run_scheduler()
+
+
+@app.command()
+def doctor() -> None:
+    """Diagnostic command: test all system components."""
+    import subprocess
+
+    typer.echo("\n🔍 Remind System Diagnostic\n")
+    typer.echo("=" * 50)
+
+    # Test 1: Database
+    typer.echo("\n1️⃣  Testing database...")
+    try:
+        db = get_db()
+        test_reminder = db.add_reminder(
+            text="[TEST] Doctor diagnostic - can be deleted",
+            due_at=datetime.now(timezone.utc),
+            priority=PriorityLevel.LOW,
+        )
+        typer.echo(f"   ✓ Database OK (created reminder ID {test_reminder.id})")
+
+        # Clean up test reminder
+        db.mark_done(test_reminder.id)
+        db.close()
+    except Exception as e:
+        typer.echo(f"   ✗ Database failed: {e}", err=True)
+        raise typer.Exit(1)
+
+    # Test 2: Notifications
+    typer.echo("\n2️⃣  Testing notifications...")
+    try:
+        from remind.notifications import NotificationManager
+
+        nm = NotificationManager()
+        if not nm.is_supported():
+            typer.echo("   ⚠️  Notifications not available (graceful degradation)")
+        else:
+            result = nm.notify_reminder_due("[TEST] Remind diagnostic notification")
+            if result:
+                typer.echo("   ✓ Notifications OK (check your system tray)")
+            else:
+                typer.echo("   ⚠️  Notifications may not work properly")
+    except Exception as e:
+        typer.echo(f"   ⚠️  Notifications warning: {e}")
+
+    # Test 3: Scheduler
+    typer.echo("\n3️⃣  Testing scheduler...")
+    try:
+        from remind.scheduler import Scheduler
+
+        scheduler = Scheduler()
+        if scheduler.notifications:
+            typer.echo("   ✓ Scheduler OK (notifications available)")
+        else:
+            typer.echo("   ✓ Scheduler OK (notifications unavailable but scheduler works)")
+    except Exception as e:
+        typer.echo(f"   ✗ Scheduler failed: {e}", err=True)
+
+    # Test 4: Background Service
+    typer.echo("\n4️⃣  Checking background service...")
+    try:
+        import os
+        import platform
+
+        system = platform.system()
+        if system == "Darwin":  # macOS
+            plist_path = os.path.expanduser("~/Library/LaunchAgents/com.remind.scheduler.plist")
+            if os.path.exists(plist_path):
+                typer.echo("   ✓ Background service installed (macOS LaunchAgent)")
+            else:
+                typer.echo(
+                    "   ⚠️  Background service NOT installed. Run: remind scheduler --install"
+                )
+        elif system == "Linux":
+            service_path = os.path.expanduser("~/.config/systemd/user/remind-scheduler.service")
+            if os.path.exists(service_path):
+                # Check if running
+                try:
+                    result = subprocess.run(
+                        ["systemctl", "--user", "is-active", "remind-scheduler.service"],
+                        capture_output=True,
+                        timeout=5,
+                    )
+                    if result.returncode == 0:
+                        typer.echo("   ✓ Background service installed and RUNNING (systemd)")
+                    else:
+                        typer.echo(
+                            "   ⚠️  Background service installed but NOT RUNNING. "
+                            "Start it: systemctl --user start remind-scheduler.service"
+                        )
+                except Exception:
+                    typer.echo("   ⚠️  Background service installed (systemd) but status unknown")
+            else:
+                typer.echo(
+                    "   ⚠️  Background service NOT installed. Run: remind scheduler --install"
+                )
+        else:
+            typer.echo(f"   ℹ️  Unknown platform: {system}")
+    except Exception as e:
+        typer.echo(f"   ⚠️  Could not check background service: {e}")
+
+    # Test 5: Configuration
+    typer.echo("\n5️⃣  Checking configuration...")
+    try:
+        config = load_config()
+        typer.echo("   ✓ Configuration loaded")
+        typer.echo(f"     - Scheduler interval: {config.scheduler_interval_minutes}m")
+        typer.echo(
+            f"     - Notifications: {'enabled' if config.notifications_enabled else 'disabled'}"
+        )
+        typer.echo(
+            f"     - AI suggestions: {'enabled' if config.ai_rephrasing_enabled else 'disabled'}"
+        )
+    except Exception as e:
+        typer.echo(f"   ✗ Configuration error: {e}", err=True)
+
+    # Summary
+    typer.echo("\n" + "=" * 50)
+    typer.echo(
+        "\n✓ System diagnostic complete!\n"
+        "💡 Tips:\n"
+        "   • To install the background scheduler: remind scheduler --install\n"
+        "   • To test it's working: remind add 'test' --due 'now'\n"
+        "   • To view settings: remind settings --show\n"
+    )
 
 
 if __name__ == "__main__":
