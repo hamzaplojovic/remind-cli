@@ -53,7 +53,8 @@ def add(
     if due:
         due_dt = parse_datetime(due)
         if not due_dt:
-            typer.echo(f"Could not parse due time: {due}")
+            typer.echo(f"✗ Could not parse due time: {due}", err=True)
+            typer.echo("Examples: 'tomorrow', 'next monday 3pm', 'in 2 hours', '2pm'", err=True)
             raise typer.Exit(1)
     else:
         # Default to today at 9am
@@ -127,7 +128,7 @@ def add(
 
 
 @app.command()
-def list_reminders(
+def list(
     all: bool = typer.Option(False, "--all", "-a", help="Show all reminders including done"),
     project: Optional[str] = typer.Option(
         None, "--project", "-c", help="Filter by project"
@@ -161,13 +162,16 @@ def list_reminders(
 def done(reminder_id: int = typer.Argument(..., help="Reminder ID")) -> None:
     """Mark a reminder as done."""
     db = get_db()
-    reminder = db.mark_done(reminder_id)
+    try:
+        reminder = db.mark_done(reminder_id)
 
-    if reminder:
-        typer.echo(f"✓ Reminder {reminder_id} marked done")
-    else:
-        typer.echo(f"✗ Reminder {reminder_id} not found")
-        raise typer.Exit(1)
+        if reminder:
+            typer.echo(f"✓ Reminder {reminder_id} marked done")
+        else:
+            typer.echo(f"✗ Reminder {reminder_id} not found")
+            raise typer.Exit(1)
+    finally:
+        db.close()
 
 
 @app.command()

@@ -63,6 +63,7 @@ class Config(BaseModel):
     notification_sound_enabled: bool = True
     ai_rephrasing_enabled: bool = True
     ai_backend_url: Optional[str] = None  # Backend API URL for AI suggestions
+    openai_api_key: Optional[str] = None  # OpenAI API key (for local usage)
     nudge_intervals_minutes: list[int] = Field(
         default_factory=lambda: [5, 15, 60]
     )

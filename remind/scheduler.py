@@ -33,8 +33,11 @@ class SchedulerState:
 
         Returns True if enough time has passed since last nudge.
         """
+        # First nudge: reminder hasn't been nudged yet but is overdue
         if reminder_id not in self.last_nudge_times:
-            return False
+            # Check if reminder is past first nudge interval
+            time_since_due = (datetime.now(timezone.utc) - last_due_time).total_seconds() / 60
+            return time_since_due > nudge_intervals[0] if nudge_intervals else False
 
         last_nudge = self.last_nudge_times[reminder_id]
         # Get the next nudge interval
